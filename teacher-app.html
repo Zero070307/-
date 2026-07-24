@@ -1079,7 +1079,16 @@ function exportData() {
   const data = { students, history, exportedAt: new Date().toISOString() };
   const json = JSON.stringify(data);
 
+  // Ensure password overlay is active in exported file
+  const pwOverlay = document.getElementById('passwordOverlay');
+  const wasActive = pwOverlay && pwOverlay.classList.contains('active');
+  if (pwOverlay && !wasActive) pwOverlay.classList.add('active');
+
   let html = document.documentElement.outerHTML;
+
+  // Restore original state
+  if (pwOverlay && !wasActive) pwOverlay.classList.remove('active');
+
   // Replace the embedded-data script content with new data
   html = html.replace(
     /(<script type="application\/json" id="embedded-data">)[\s\S]*?(<\/script>)/,
