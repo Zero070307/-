@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📚 教师学员管理系统</title>
+<style>
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary: #4f46e5;
+  --primary-light: #e0e7ff;
+  --danger: #ef4444;
+  --danger-light: #fee2e2;
+  --success: #10b981;
+  --success-light: #d1fae5;
+  --warning: #f59e0b;
+  --warning-light: #fef3c7;
+  --bg: #f1f5f9;
+  --surface: #fff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,.08), 0 4px 10px rgba(0,0,0,.04);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ===== Layout ===== */
+.app-header {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: #fff;
+  padding: 16px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 4px 20px rgba(79,70,229,.25);
+}
+.app-header h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; }
+.header-actions { display: flex; gap: 8px; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 20px 24px; }
+
+/* ===== Stats Row ===== */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow);
+  display: flex; align-items: center; gap: 14px;
+}
+.stat-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+}
+.stat-icon.blue { background: var(--primary-light); }
+.stat-icon.green { background: var(--success-light); }
+.stat-icon.orange { background: var(--warning-light); }
+.stat-icon.red { background: var(--danger-light); }
+.stat-value { font-size: 1.5rem; font-weight: 700; line-height: 1.2; }
+.stat-label { font-size: .8rem; color: var(--text-muted); }
+
+/* ===== Toolbar ===== */
+.toolbar {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  margin-bottom: 20px;
+}
+.search-box {
+  flex: 1; min-width: 200px; position: relative;
+}
+.search-box input {
+  width: 100%; padding: 10px 14px 10px 38px;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  font-size: .9rem; outline: none; transition: border-color .2s;
+}
+.search-box input:focus { border-color: var(--primary); }
+.search-box .search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); pointer-events: none;
+}
+.filter-select {
+  padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px;
+  font-size: .9rem; outline: none; background: var(--surface); cursor: pointer;
+  min-width: 140px;
+}
+.filter-select:focus { border-color: var(--primary); }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 18px; border: none; border-radius: 8px;
+  font-size: .9rem; font-weight: 600; cursor: pointer;
+  transition: all .2s; white-space: nowrap;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: #4338ca; box-shadow: 0 2px 8px rgba(79,70,229,.3); }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #059669; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #dc2626; }
+.btn-outline {
+  background: var(--surface); color: var(--text);
+  border: 1.5px solid var(--border);
+}
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-sm { padding: 6px 12px; font-size: .8rem; border-radius: 6px; }
+.btn-xs { padding: 3px 8px; font-size: .75rem; border-radius: 4px; }
+
+/* ===== Table ===== */
+.table-wrapper {
+  background: var(--surface); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+}
+.empty-state {
+  text-align: center; padding: 60px 20px; color: var(--text-muted);
+}
+.empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+table {
+  width: 100%; border-collapse: collapse;
+}
+thead th {
+  background: #f8fafc; padding: 12px 16px; text-align: left;
+  font-size: .8rem; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .03em;
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+tbody td {
+  padding: 14px 16px; border-bottom: 1px solid #f1f5f9;
+  font-size: .9rem;
+}
+tbody tr { transition: background .15s; }
+tbody tr:hover { background: #f8fafc; }
+tbody tr:last-child td { border-bottom: none; }
+
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 20px;
+  font-size: .78rem; font-weight: 600;
+}
+.badge-blue { background: var(--primary-light); color: var(--primary); }
+.badge-green { background: var(--success-light); color: #059669; }
+.badge-orange { background: var(--warning-light); color: #b45309; }
+
+.hours-low { color: var(--danger); font-weight: 600; }
+.hours-ok { color: var(--text); }
+
+.action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ===== Modal ===== */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.45); z-index: 200;
+  align-items: center; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--surface); border-radius: var(--radius);
+  width: 90%; max-width: 520px; max-height: 85vh;
+  overflow-y: auto; box-shadow: var(--shadow-lg);
+}
+.modal-header {
+  padding: 20px 24px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: var(--surface);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.modal-header h2 { font-size: 1.15rem; font-weight: 700; }
+.modal-close {
+  width: 32px; height: 32px; border-radius: 8px; border: none;
+  background: var(--bg); cursor: pointer; font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); transition: all .2s;
+}
+.modal-close:hover { background: var(--danger-light); color: var(--danger); }
+.modal-body { padding: 24px; }
+.modal-footer {
+  padding: 16px 24px; border-top: 1px solid var(--border);
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+
+.form-group { margin-bottom: 16px; }
+.form-group label {
+  display: block; font-size: .85rem; font-weight: 600;
+  margin-bottom: 6px; color: var(--text);
+}
+.form-group input, .form-group select {
+  width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: .9rem; outline: none; transition: border-color .2s;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* ===== Sign-in Modal ===== */
+.signin-student-info {
+  background: #f8fafc; border-radius: 8px; padding: 16px;
+  margin-bottom: 20px; text-align: center;
+}
+.signin-student-info .name { font-size: 1.2rem; font-weight: 700; }
+.signin-student-info .meta { font-size: .85rem; color: var(--text-muted); margin-top: 4px; }
+.signin-hint {
+  background: var(--warning-light); border-radius: 8px;
+  padding: 12px 16px; font-size: .85rem; color: #92400e;
+  margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+}
+
+/* ===== History Tab ===== */
+.tabs { display: flex; gap: 2px; margin-bottom: 20px; background: var(--surface); border-radius: 8px; padding: 4px; box-shadow: var(--shadow); }
+.tab-btn {
+  flex: 1; padding: 10px 20px; border: none; background: transparent;
+  border-radius: 6px; font-size: .9rem; font-weight: 600; cursor: pointer;
+  color: var(--text-muted); transition: all .2s;
+}
+.tab-btn.active { background: var(--primary); color: #fff; box-shadow: var(--shadow); }
+.history-table td { vertical-align: middle; }
+
+/* ===== History Student Cards ===== */
+.history-student-card {
+  background: var(--surface); border-radius: 8px;
+  border: 1px solid var(--border); margin-bottom: 12px;
+  overflow: hidden;
+}
+.history-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; cursor: pointer; user-select: none;
+  transition: background .15s;
+}
+.history-card-header:hover { background: #f8fafc; }
+.history-card-info {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.history-card-info strong { font-size: 1rem; }
+.history-card-meta {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .85rem; color: var(--text-muted); white-space: nowrap;
+}
+.collapse-arrow { font-size: .7rem; transition: transform .2s; }
+.history-student-card.open .collapse-arrow { transform: rotate(180deg); }
+.history-card-body {
+  display: none; border-top: 1px solid var(--border);
+  padding: 0;
+}
+.history-student-card.open .history-card-body { display: block; }
+.history-card-body table { margin: 0; }
+.history-card-body thead th { background: #fafafa; font-size: .75rem; }
+.history-card-body tbody td { font-size: .85rem; padding: 10px 16px; }
+
+/* ===== Toast ===== */
+.toast-container {
+  position: fixed; top: 80px; right: 24px; z-index: 999;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+  padding: 12px 20px; border-radius: 8px; color: #fff; font-weight: 600;
+  font-size: .9rem; box-shadow: var(--shadow-lg);
+  animation: slideIn .3s ease;
+  display: flex; align-items: center; gap: 8px;
+}
+.toast-success { background: #059669; }
+.toast-error { background: #dc2626; }
+.toast-info { background: #4f46e5; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .container { padding: 12px; }
+  .toolbar { flex-direction: column; }
+  .search-box { min-width: 100%; }
+  .filter-select { width: 100%; }
+  .btn { width: 100%; justify-content: center; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .form-row { grid-template-columns: 1fr; }
+  table { font-size: .8rem; }
+  thead th, tbody td { padding: 10px 8px; }
+  .action-btns { flex-direction: column; }
+  .btn-sm { width: 100%; justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<header class="app-header">
+  <h1>📚 教师学员管理系统</h1>
+  <div class="header-actions">
+    <button class="btn btn-outline" onclick="exportData()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">📥 导出</button>
+    <button class="btn btn-outline" onclick="document.getElementById('importFile').click()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">📤 导入</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    <button class="btn btn-success" onclick="openAddStudentModal()">＋ 添加学员</button>
+  </div>
+</header>
+
+<div class="container">
+  <!-- ===== Stats ===== -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon blue">👥</div>
+      <div><div class="stat-value" id="statTotal">0</div><div class="stat-label">学员总数</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red">📌</div>
+      <div><div class="stat-value" id="statClasses">0</div><div class="stat-label">班级数量</div></div>
+    </div>
+  </div>
+
+  <!-- ===== Tabs ===== -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('students')">🎓 学员管理</button>
+    <button class="tab-btn" onclick="switchTab('history')">📋 签到记录</button>
+  </div>
+
+  <!-- ===== Toolbar (Students Tab) ===== -->
+  <div class="toolbar" id="toolbarStudents">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="搜索姓名、电话、课程…" oninput="renderStudents()">
+    </div>
+    <select class="filter-select" id="filterClass" onchange="renderStudents()">
+      <option value="">📂 全部班级</option>
+    </select>
+    <select class="filter-select" id="filterCourse" onchange="renderStudents()">
+      <option value="">📖 全部课程类别</option>
+    </select>
+    <button class="btn btn-success" onclick="openBatchSigninModal()">🚀 一键签到</button>
+  </div>
+
+  <!-- ===== Toolbar (History Tab) ===== -->
+  <div class="toolbar" id="toolbarHistory" style="display: none;">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchHistory" placeholder="搜索学员姓名…" oninput="renderHistory()">
+    </div>
+    <select class="filter-select" id="filterHistoryClass" onchange="renderHistory()">
+      <option value="">📂 全部班级</option>
+    </select>
+    <button class="btn btn-danger btn-sm" onclick="clearHistory()">🗑️ 清空记录</button>
+  </div>
+
+  <!-- ===== Student Table ===== -->
+  <div class="table-wrapper" id="studentsTableWrapper">
+    <div class="empty-state">
+      <div class="empty-icon">📭</div>
+      <p>还没有添加学员</p>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="openAddStudentModal()">＋ 添加第一个学员</button>
+    </div>
+  </div>
+
+  <!-- ===== History Table ===== -->
+  <div class="table-wrapper" id="historyTableWrapper" style="display: none;">
+    <div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <p>暂无签到记录</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Student Form Modal ===== -->
+<div class="modal-overlay" id="studentModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="studentModalTitle">添加学员</h2>
+      <button class="modal-close" onclick="closeModal('studentModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editStudentId">
+      <div class="form-row">
+        <div class="form-group">
+          <label>👤 姓名 *</label>
+          <input type="text" id="studentName" placeholder="请输入学员姓名" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>📞 电话</label>
+          <input type="text" id="studentPhone" placeholder="请输入联系电话" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>📚 课程类别 *</label>
+          <select id="studentCourse">
+            <option value="">请选择课程类别</option>
+            <option value="常规课">常规课</option>
+            <option value="集训课">集训课</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>🏫 班级 *</label>
+          <input type="text" id="studentClass" list="classDatalist" placeholder="输入班级名称，如：周六上午班" autocomplete="off">
+          <datalist id="classDatalist"></datalist>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>⏰ 总课时（剩余） *</label>
+          <input type="number" id="studentHours" placeholder="请输入课时数" min="0" value="0">
+        </div>
+        <div class="form-group">
+          <label>📝 备注</label>
+          <input type="text" id="studentNote" placeholder="如：需补材料、过敏提醒…" autocomplete="off">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('studentModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveStudent()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Sign-in (销课) Modal ===== -->
+<div class="modal-overlay" id="signinModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>✍️ 签到销课</h2>
+      <button class="modal-close" onclick="closeModal('signinModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="signin-student-info">
+        <div class="name" id="signinStudentName">—</div>
+        <div class="meta">
+          剩余课时：<strong id="signinRemainHours">0</strong> &nbsp;|&nbsp;
+          班级：<span id="signinStudentClass">—</span>
+        </div>
+      </div>
+      <div class="signin-hint">
+        ⚠️ 签到后将自动扣除 1 个课时
+      </div>
+      <div class="form-group">
+        <label>📝 备注（可选）</label>
+        <input type="text" id="signinNote" placeholder="例如：第3节课，表现优秀" autocomplete="off">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('signinModal')">取消</button>
+      <button class="btn btn-success" onclick="confirmSignin()">✅ 确认签到（-1课时）</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Batch Sign-in Modal ===== -->
+<div class="modal-overlay" id="batchSigninModal">
+  <div class="modal" style="max-width: 600px;">
+    <div class="modal-header">
+      <h2>🚀 一键签到（按班级）</h2>
+      <button class="modal-close" onclick="closeModal('batchSigninModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>🏫 选择班级</label>
+          <select id="batchClassSelect" onchange="renderBatchStudentList()">
+            <option value="">请选择班级</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>📚 课程类别</label>
+          <select id="batchCourseSelect" onchange="renderBatchStudentList()">
+            <option value="">全部课程</option>
+            <option value="常规课">常规课</option>
+            <option value="集训课">集训课</option>
+          </select>
+        </div>
+      </div>
+      <div class="signin-hint">
+        💡 默认全员签到，取消勾选 = 请假（不扣课时）。课时为 0 的学员自动跳过。
+      </div>
+      <div id="batchStudentList" style="max-height: 300px; overflow-y: auto;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('batchSigninModal')">取消</button>
+      <button class="btn btn-success" onclick="confirmBatchSignin()">✅ 确认签到</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Toast Container ===== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script type="application/json" id="embedded-data">{"students":[{"course":"常规课","createdAt":"2026-07-13T14:53:18.681Z","id":"s1832950_0","name":"翁心怡","className":"素描","phone":"13205037911","note":"","hours":16},{"course":"集训课","createdAt":"2026-07-13T14:54:43.394Z","id":"s2053723_1","name":"郑世怡","className":"集训","phone":"13625067718","note":"","hours":9},{"course":"集训课","createdAt":"2026-07-13T14:55:41.732Z","id":"s2053723_2","name":"郭诺夕","className":"集训","phone":"15980505433","note":"","hours":0},{"course":"集训课","createdAt":"2026-07-13T15:08:57.288Z","id":"s2053723_3","name":"吴用","className":"素描","phone":"15880032477","note":"","hours":19},{"course":"集训课","createdAt":"2026-07-13T15:09:58.107Z","id":"s2053723_4","name":"魏宁岑","className":"艺术大师提高","phone":"13328695593","note":"","hours":20},{"course":"常规课","createdAt":"2026-07-13T15:13:25.161Z","id":"s2053723_5","name":"魏宁岑","className":"艺术大师提高","phone":"","note":"","hours":16},{"course":"集训课","createdAt":"2026-07-13T15:18:00.394Z","id":"s2068738_6","name":"翁丽莎","className":"素描","phone":"13275010192","note":"","hours":19},{"course":"集训课","createdAt":"2026-07-14T11:08:04.79Z","id":"s2068738_7","name":"申雅琪","className":"集训","phone":"13489186760","note":"","hours":1},{"course":"集训课","createdAt":"2026-07-14T11:09:31.088Z","id":"s2068738_8","name":"杨瑾雯","className":"素描","phone":"18350159808","note":"","hours":19},{"course":"集训课","createdAt":"2026-07-14T11:10:46.534Z","id":"s2068738_9","name":"夏静","className":"素描","phone":"13635221565","note":"","hours":39},{"course":"集训课","createdAt":"2026-07-14T11:13:45.953Z","id":"s2068738_10","name":"吴心悠","className":"素描","phone":"","note":"","hours":29},{"course":"集训课","createdAt":"2026-07-14T11:16:22.1Z","id":"s2068738_11","name":"洪恩佑","className":"素描","phone":"13799352299","note":"","hours":19},{"course":"集训课","createdAt":"2026-07-14T11:17:27.775Z","id":"s2068738_12","name":"翁麒惠","className":"素描","phone":"13645060708","note":"","hours":19},{"course":"集训课","createdAt":"2026-07-14T11:18:39.614Z","id":"s2068738_13","name":"何慕妍","className":"素描","phone":"13635222781","note":"","hours":39},{"course":"集训课","createdAt":"2026-07-14T11:19:14.022Z","id":"s2068738_14","name":"何梓昕","className":"素描","phone":"19905919088","note":"","hours":19},{"course":"集训课","createdAt":"2026-07-14T11:20:09.609Z","id":"s2068738_15","name":"翁上媛","className":"素描","phone":"18859128563","note":"","hours":39},{"course":"集训课","createdAt":"2026-07-14T11:22:16.441Z","id":"s2068738_16","name":"郑烨芽","className":"集训","phone":"13625069615","note":"","hours":9},{"course":"集训课","createdAt":"2026-07-14T11:23:07.262Z","id":"s2078849_17","name":"林诗玥","className":"素描","phone":"15280148993","note":"","hours":39},{"course":"集训课","createdAt":"2026-07-14T11:23:47.766Z","id":"s2078849_18","name":"黄梓涵","className":"集训","phone":"18606945278","note":"","hours":11},{"course":"常规课","createdAt":"2026-07-14T11:26:58.802Z","id":"s2078849_19","name":"叶梓","className":"素描","phone":"13459176901","note":"","hours":16},{"course":"集训课","createdAt":"2026-07-14T11:28:29.692Z","id":"s2078849_20","name":"叶梓","className":"素描","phone":"","note":"","hours":59},{"course":"集训课","createdAt":"2026-07-14T11:29:55.041Z","id":"s2078849_21","name":"林昕妤","className":"艺术大师提高","phone":"13178033176","note":"","hours":40},{"course":"集训课","createdAt":"2026-07-14T11:35:17.187Z","id":"s2078849_22","name":"谢容帆","className":"艺术大师提高","phone":"","note":"","hours":40},{"course":"集训课","createdAt":"2026-07-14T11:37:01.996Z","id":"s2078849_23","name":"郑烨垚","className":"集训","phone":"13625069615","note":"","hours":0},{"course":"集训课","createdAt":"2026-07-14T11:38:25.26Z","id":"s2078849_24","name":"吴雯","className":"素描","phone":"13788870789","note":"","hours":39},{"course":"集训课","createdAt":"2026-07-14T11:39:11.485Z","id":"s2078849_25","name":"吴雨墨","className":"素描","phone":"18695773026","note":"","hours":1},{"course":"集训课","createdAt":"2026-07-14T11:40:09.491Z","id":"s2078849_26","name":"林雨洛","className":"集训","phone":"13665085693","note":"","hours":20},{"course":"集训课","createdAt":"2026-07-14T11:42:35.476Z","id":"s2078849_27","name":"陆瑾怡","className":"集训","phone":"18705075191","note":"","hours":20},{"course":"常规课","createdAt":"2026-07-14T11:43:47.401Z","id":"s2078849_28","name":"郑若林","className":"素描","phone":"13850195047","note":"","hours":16},{"course":"集训课","createdAt":"2026-07-14T11:48:34.438Z","id":"s2078849_29","name":"吴若曦","className":"素描","phone":"13559352702","note":"","hours":19},{"course":"集训课","createdAt":"2026-07-14T11:51:50.882Z","id":"s2091097_30","name":"陈钰琪","className":"素描","phone":"18960773219","note":"","hours":19},{"course":"集训课","createdAt":"2026-07-14T11:53:31.923Z","id":"s2091097_31","name":"张昕语","className":"集训","phone":"18060598216","note":"","hours":11},{"course":"集训课","createdAt":"2026-07-14T11:54:06.859Z","id":"s2091097_32","name":"王争","className":"素描","phone":"13799990785","note":"","hours":39},{"course":"集训课","createdAt":"2026-07-14T12:28:32.699Z","id":"s2091097_33","name":"庄雨泽","className":"素描","phone":"18650900803","note":"","hours":59},{"course":"集训课","createdAt":"2026-07-14T12:29:33.524Z","id":"s2091097_34","name":"庄雨轩","className":"素描","phone":"18650900803","note":"","hours":39},{"course":"集训课","createdAt":"2026-07-14T12:30:11.581Z","id":"s2091097_35","name":"周奕含","className":"素描","phone":"13960993511","note":"","hours":15},{"course":"常规课","createdAt":"2026-07-14T12:31:48.294Z","id":"s2091097_36","name":"陈泽楷","className":"素描","phone":"18608899999","note":"","hours":16},{"course":"集训课","createdAt":"2026-07-14T12:33:45.769Z","id":"s2091097_37","name":"杨裕辰","className":"集训","phone":"18350159808","note":"","hours":9},{"course":"集训课","createdAt":"2026-07-14T15:57:24.526Z","id":"s2091097_38","name":"黄泽旭","className":"集训","phone":"","note":"","hours":9},{"course":"集训课","createdAt":"2026-07-14T16:07:36.083Z","id":"s2091097_39","name":"陈锘珊","className":"集训","phone":"15859106375","note":"","hours":21},{"course":"常规课","createdAt":"2026-07-14T16:09:21.544Z","id":"s2091097_40","name":"郭云浅","className":"素描","phone":"15960123500","note":"","hours":16},{"course":"集训课","createdAt":"2026-07-14T16:09:41.353Z","id":"s2101521_41","name":"郭云浅","className":"素描","phone":"","note":"","hours":0},{"course":"集训课","createdAt":"2026-07-14T16:12:11.419Z","id":"s2101521_42","name":"杨静纾","className":"素描","phone":"18606911047","note":"","hours":1},{"course":"集训课","createdAt":"2026-07-19T15:34:21.65Z","id":"s2101521_43","name":"薛思懿","className":"素描","phone":"13758267436","note":"","hours":20},{"course":"集训课","createdAt":"2026-07-19T15:35:28.943Z","id":"s2101521_44","name":"林钇廷","className":"素描","phone":"15060106050","note":"","hours":20},{"course":"集训课","createdAt":"2026-07-19T15:36:10.88Z","id":"s2101521_45","name":"林辰熙","className":"素描","phone":"13075819988","note":"","hours":20},{"course":"集训课","createdAt":"2026-07-19T15:37:29.688Z","id":"s2101521_46","name":"张夏琳","className":"集训","phone":"28","note":"","hours":0},{"course":"常规课","createdAt":"2026-07-19T15:38:13.641Z","id":"s2111482_47","name":"郑硕伟","className":"素描","phone":"18120965377","note":"","hours":1},{"course":"常规课","createdAt":"2026-07-19T15:38:51.665Z","id":"s2111482_48","name":"李坤","className":"素描","phone":"1","note":"","hours":0},{"course":"常规课","createdAt":"2026-07-19T15:39:54.32Z","id":"s2111482_49","name":"吴心妍","className":"素描","phone":"15005077698","note":"","hours":16},{"course":"集训课","createdAt":"2026-07-19T15:40:50.015Z","id":"s2111482_50","name":"吴心妍","className":"素描","phone":"15005077698","note":"","hours":20},{"course":"常规课","createdAt":"2026-07-19T15:41:41.269Z","id":"s2111482_51","name":"林星霖","className":"素描","phone":"15985712234","note":"","hours":16},{"course":"集训课","createdAt":"2026-07-19T15:42:43.723Z","id":"s2111482_52","name":"陈锘珊","className":"集训","phone":"15859106375","note":"","hours":25},{"course":"常规课","createdAt":"2026-07-19T15:45:14.445Z","id":"s2121448_53","name":"林诗婷","className":"素描","phone":"16","note":"","hours":0},{"course":"集训课","createdAt":"2026-07-19T15:45:42.424Z","id":"s2121448_54","name":"林诗婷","className":"素描","phone":"","note":"","hours":20},{"course":"集训课","createdAt":"2026-07-24T05:16:25.684Z","id":"s2121448_55","name":"谢容伊","className":"集训","phone":"13788882247","note":"","hours":12},{"course":"常规课","createdAt":"2026-07-24T05:19:53.771Z","id":"s2121448_56","name":"佳琦","className":"艺术大师提高","phone":"13003823816","note":"","hours":1},{"course":"常规课","createdAt":"2026-07-24T05:20:43.767Z","id":"s2121448_57","name":"佳瑜","className":"素描","phone":"13003823816","note":"","hours":1}],"history":[{"course":"集训课","time":"2026-07-18T14:34:35.355Z","id":"6fa745af6a5b8efb00a1d52c2cc768a6","className":"集训","studentName":"申雅琪","remainHours":8,"note":"课堂一键点名","studentId":"s2068738_7"},{"course":"集训课","time":"2026-07-18T14:34:35.735Z","id":"d2a254a36a5b8efb03c8d6a904b7e0b5","className":"集训","studentName":"郑烨芽","remainHours":16,"note":"课堂一键点名","studentId":"s2068738_16"},{"course":"集训课","time":"2026-07-18T14:34:36.07Z","id":"7db6b9f26a5b8efc027eed127d702340","className":"集训","studentName":"黄梓涵","remainHours":18,"note":"课堂一键点名","studentId":"s2078849_18"},{"course":"集训课","time":"2026-07-18T14:34:37.336Z","id":"d2a254a36a5b8efd03c8d6be395d59c7","className":"集训","studentName":"张昕语","remainHours":18,"note":"课堂一键点名","studentId":"s2091097_31"},{"course":"集训课","time":"2026-07-18T14:34:37.683Z","id":"7db6b9f26a5b8efd027eed2573b8737c","className":"集训","studentName":"杨裕辰","remainHours":16,"note":"课堂一键点名","studentId":"s2091097_37"},{"course":"集训课","time":"2026-07-18T14:34:38.007Z","id":"d2a254a36a5b8efe03c8d6c54812bf1a","className":"集训","studentName":"黄泽旭","remainHours":16,"note":"课堂一键点名","studentId":"s2091097_38"},{"course":"集训课","time":"2026-07-18T14:34:38.32Z","id":"6fa745af6a5b8efe00a1d53e25697643","className":"集训","studentName":"陈锘珊","remainHours":28,"note":"课堂一键点名","studentId":"s2091097_39"},{"course":"集训课","time":"2026-07-18T14:35:37.103Z","id":"7db6b9f26a5b8f39027ef03e2c46ce6c","className":"集训","studentName":"申雅琪","remainHours":7,"note":"课堂一键点名","studentId":"s2068738_7"},{"course":"集训课","time":"2026-07-18T14:35:37.426Z","id":"6fa745af6a5b8f3900a1d7942b9aa86c","className":"集训","studentName":"郑烨芽","remainHours":15,"note":"课堂一键点名","studentId":"s2068738_16"},{"course":"集训课","time":"2026-07-18T14:35:37.763Z","id":"daef7e716a5b8f3900c0a3b9005ee578","className":"集训","studentName":"黄梓涵","remainHours":17,"note":"课堂一键点名","studentId":"s2078849_18"},{"course":"集训课","time":"2026-07-18T14:35:40.037Z","id":"d2a254a36a5b8f3c03c8ec6b5fde2b70","className":"集训","studentName":"张昕语","remainHours":17,"note":"课堂一键点名","studentId":"s2091097_31"},{"course":"集训课","time":"2026-07-18T14:35:40.449Z","id":"6fa745af6a5b8f3c00a1d7ab7bf6e4a9","className":"集训","studentName":"杨裕辰","remainHours":15,"note":"课堂一键点名","studentId":"s2091097_37"},{"course":"集训课","time":"2026-07-18T14:35:40.973Z","id":"7db6b9f26a5b8f3d027ef09300b08355","className":"集训","studentName":"黄泽旭","remainHours":15,"note":"课堂一键点名","studentId":"s2091097_38"},{"course":"集训课","time":"2026-07-18T14:35:41.296Z","id":"6fa745af6a5b8f3d00a1d7b3791b796d","className":"集训","studentName":"陈锘珊","remainHours":27,"note":"课堂一键点名","studentId":"s2091097_39"},{"course":"集训课","time":"2026-07-18T14:37:29.708Z","id":"daef7e716a5b8fa900c0ab445b54149a","className":"集训","studentName":"申雅琪","remainHours":6,"note":"课堂一键点名","studentId":"s2068738_7"},{"course":"集训课","time":"2026-07-18T14:37:30.027Z","id":"daef7e716a5b8faa00c0ab4950276b1c","className":"集训","studentName":"郑烨芽","remainHours":14,"note":"课堂一键点名","studentId":"s2068738_16"},{"course":"集训课","time":"2026-07-18T14:37:30.392Z","id":"6fa745af6a5b8faa00a1db462963e53c","className":"集训","studentName":"黄梓涵","remainHours":16,"note":"课堂一键点名","studentId":"s2078849_18"},{"course":"集训课","time":"2026-07-18T14:37:32.49Z","id":"daef7e716a5b8fac00c0ab61430b4e60","className":"集训","studentName":"张昕语","remainHours":16,"note":"课堂一键点名","studentId":"s2091097_31"},{"course":"集训课","time":"2026-07-18T14:37:33.057Z","id":"7db6b9f26a5b8fad027ef5c14dd6f890","className":"集训","studentName":"杨裕辰","remainHours":14,"note":"课堂一键点名","studentId":"s2091097_37"},{"course":"集训课","time":"2026-07-18T14:37:33.379Z","id":"daef7e716a5b8fad00c0ab6a6c2c49b5","className":"集训","studentName":"黄泽旭","remainHours":14,"note":"课堂一键点名","studentId":"s2091097_38"},{"course":"集训课","time":"2026-07-18T14:37:33.948Z","id":"6fa745af6a5b8fae00a1db635a0fc1fe","className":"集训","studentName":"陈锘珊","remainHours":26,"note":"课堂一键点名","studentId":"s2091097_39"},{"course":"集训课","time":"2026-07-18T16:40:17.427Z","id":"7db6b9f26a5bac720280517e198a208d","className":"集训","studentName":"申雅琪","remainHours":5,"note":"课堂一键点名","studentId":"s2068738_7"},{"course":"集训课","time":"2026-07-18T16:40:18.043Z","id":"6fa745af6a5bac7300a307f8250f9008","className":"集训","studentName":"郑烨芽","remainHours":13,"note":"课堂一键点名","studentId":"s2068738_16"},{"course":"集训课","time":"2026-07-18T16:40:18.67Z","id":"d2a254a36a5bac7303d0d1c5037b82b2","className":"集训","studentName":"黄梓涵","remainHours":15,"note":"课堂一键点名","studentId":"s2078849_18"},{"course":"集训课","time":"2026-07-18T16:40:20.929Z","id":"d2a254a36a5bac7503d0d1f15c9d0825","className":"集训","studentName":"张昕语","remainHours":15,"note":"课堂一键点名","studentId":"s2091097_31"},{"course":"集训课","time":"2026-07-18T16:40:21.501Z","id":"6fa745af6a5bac7600a308121456ebee","className":"集训","studentName":"杨裕辰","remainHours":13,"note":"课堂一键点名","studentId":"s2091097_37"},{"course":"集训课","time":"2026-07-18T16:40:22.019Z","id":"6fa745af6a5bac7700a3081638bb4b51","className":"集训","studentName":"黄泽旭","remainHours":13,"note":"课堂一键点名","studentId":"s2091097_38"},{"course":"集训课","time":"2026-07-18T16:40:22.603Z","id":"6fa745af6a5bac7700a30819483f3666","className":"集训","studentName":"陈锘珊","remainHours":25,"note":"课堂一键点名","studentId":"s2091097_39"},{"course":"集训课","time":"2026-07-18T17:28:33.298Z","id":"6fa745af6a5bb7c100a3534f4a0e4d94","className":"素描","studentName":"吴用","remainHours":19,"note":"课堂一键点名","studentId":"s2053723_3"},{"course":"集训课","time":"2026-07-18T17:28:33.81Z","id":"daef7e716a5bb7c200c284921936e776","className":"素描","studentName":"翁丽莎","remainHours":19,"note":"课堂一键点名","studentId":"s2068738_6"},{"course":"集训课","time":"2026-07-18T17:28:34.222Z","id":"7db6b9f26a5bb7c20280abad50f09e5b","className":"素描","studentName":"杨瑾雯","remainHours":19,"note":"课堂一键点名","studentId":"s2068738_8"},{"course":"集训课","time":"2026-07-18T17:28:34.631Z","id":"7db6b9f26a5bb7c20280abb12ae57556","className":"素描","studentName":"夏静","remainHours":39,"note":"课堂一键点名","studentId":"s2068738_9"},{"course":"集训课","time":"2026-07-18T17:28:35.04Z","id":"daef7e716a5bb7c300c2849f3398e5b1","className":"素描","studentName":"吴心悠","remainHours":29,"note":"课堂一键点名","studentId":"s2068738_10"},{"course":"集训课","time":"2026-07-18T17:28:35.373Z","id":"6fa745af6a5bb7c300a3535662bbe4e4","className":"素描","studentName":"洪恩佑","remainHours":19,"note":"课堂一键点名","studentId":"s2068738_11"},{"course":"集训课","time":"2026-07-18T17:28:35.704Z","id":"d2a254a36a5bb7c303d4167d6da1fc69","className":"素描","studentName":"翁麒惠","remainHours":19,"note":"课堂一键点名","studentId":"s2068738_12"},{"course":"集训课","time":"2026-07-18T17:28:36.026Z","id":"6fa745af6a5bb7c400a3535701980876","className":"素描","studentName":"何慕妍","remainHours":39,"note":"课堂一键点名","studentId":"s2068738_13"},{"course":"集训课","time":"2026-07-18T17:28:36.372Z","id":"daef7e716a5bb7c400c284a652703b2b","className":"素描","studentName":"何梓昕","remainHours":19,"note":"课堂一键点名","studentId":"s2068738_14"},{"course":"集训课","time":"2026-07-18T17:28:36.703Z","id":"6fa745af6a5bb7c400a3535828179931","className":"素描","studentName":"翁上媛","remainHours":39,"note":"课堂一键点名","studentId":"s2068738_15"},{"course":"集训课","time":"2026-07-18T17:28:37.025Z","id":"6fa745af6a5bb7c500a3535b18b6d731","className":"素描","studentName":"林诗玥","remainHours":39,"note":"课堂一键点名","studentId":"s2078849_17"},{"course":"集训课","time":"2026-07-18T17:28:37.352Z","id":"d2a254a36a5bb7c503d416810c2c23ea","className":"素描","studentName":"叶梓","remainHours":59,"note":"课堂一键点名","studentId":"s2078849_20"},{"course":"集训课","time":"2026-07-18T17:28:37.676Z","id":"daef7e716a5bb7c500c284b070a8d2f5","className":"素描","studentName":"吴雯","remainHours":39,"note":"课堂一键点名","studentId":"s2078849_24"},{"course":"集训课","time":"2026-07-18T17:28:38.009Z","id":"6fa745af6a5bb7c600a3535d67b3046a","className":"素描","studentName":"吴雨墨","remainHours":1,"note":"课堂一键点名","studentId":"s2078849_25"},{"course":"集训课","time":"2026-07-18T17:28:38.361Z","id":"6fa745af6a5bb7c600a3535f36697b26","className":"素描","studentName":"吴若曦","remainHours":19,"note":"课堂一键点名","studentId":"s2078849_29"},{"course":"集训课","time":"2026-07-18T17:28:38.689Z","id":"7db6b9f26a5bb7c60280abc740b98523","className":"素描","studentName":"陈钰琪","remainHours":19,"note":"课堂一键点名","studentId":"s2091097_30"},{"course":"集训课","time":"2026-07-18T17:28:39.025Z","id":"6fa745af6a5bb7c700a3536248834411","className":"素描","studentName":"王争","remainHours":39,"note":"课堂一键点名","studentId":"s2091097_32"},{"course":"集训课","time":"2026-07-18T17:28:39.366Z","id":"daef7e716a5bb7c700c284b81f8d5448","className":"素描","studentName":"庄雨泽","remainHours":59,"note":"课堂一键点名","studentId":"s2091097_33"},{"course":"集训课","time":"2026-07-18T17:28:39.699Z","id":"daef7e716a5bb7c700c284bb7c7aca88","className":"素描","studentName":"庄雨轩","remainHours":39,"note":"课堂一键点名","studentId":"s2091097_34"},{"course":"集训课","time":"2026-07-18T17:28:40.017Z","id":"7db6b9f26a5bb7c80280abd20ed541b5","className":"素描","studentName":"周奕含","remainHours":15,"note":"课堂一键点名","studentId":"s2091097_35"},{"course":"集训课","time":"2026-07-18T17:29:40.885Z","id":"7db6b9f26a5bb8050280ad2b31876228","className":"集训","studentName":"郑世怡","remainHours":12,"note":"课堂一键点名","studentId":"s2053723_1"},{"course":"集训课","time":"2026-07-18T17:29:41.499Z","id":"daef7e716a5bb80500c285e55d1ff504","className":"集训","studentName":"郭诺夕","remainHours":2,"note":"课堂一键点名","studentId":"s2053723_2"},{"course":"集训课","time":"2026-07-18T17:29:41.825Z","id":"6fa745af6a5bb80600a354d40828b38d","className":"集训","studentName":"申雅琪","remainHours":4,"note":"课堂一键点名","studentId":"s2068738_7"},{"course":"集训课","time":"2026-07-18T17:29:42.132Z","id":"6fa745af6a5bb80600a354d80ad385a9","className":"集训","studentName":"郑烨芽","remainHours":12,"note":"课堂一键点名","studentId":"s2068738_16"},{"course":"集训课","time":"2026-07-18T17:29:42.448Z","id":"6fa745af6a5bb80600a354dc55ae6b12","className":"集训","studentName":"黄梓涵","remainHours":14,"note":"课堂一键点名","studentId":"s2078849_18"},{"course":"集训课","time":"2026-07-18T17:29:42.81Z","id":"d2a254a36a5bb80703d4219064fabb2e","className":"集训","studentName":"郑烨垚","remainHours":0,"note":"课堂一键点名","studentId":"s2078849_23"},{"course":"集训课","time":"2026-07-18T17:29:43.148Z","id":"daef7e716a5bb80700c285ee753700f4","className":"集训","studentName":"林雨洛","remainHours":23,"note":"课堂一键点名","studentId":"s2078849_26"},{"course":"集训课","time":"2026-07-18T17:29:43.454Z","id":"7db6b9f26a5bb8070280ad477f25abce","className":"集训","studentName":"陆瑾怡","remainHours":23,"note":"课堂一键点名","studentId":"s2078849_27"},{"course":"集训课","time":"2026-07-18T17:29:43.764Z","id":"daef7e716a5bb80700c285f31582c86f","className":"集训","studentName":"张昕语","remainHours":14,"note":"课堂一键点名","studentId":"s2091097_31"},{"course":"集训课","time":"2026-07-18T17:29:44.109Z","id":"d2a254a36a5bb80803d421a109ad5694","className":"集训","studentName":"杨裕辰","remainHours":12,"note":"课堂一键点名","studentId":"s2091097_37"},{"course":"集训课","time":"2026-07-18T17:29:44.445Z","id":"d2a254a36a5bb80803d421a30a58361f","className":"集训","studentName":"黄泽旭","remainHours":12,"note":"课堂一键点名","studentId":"s2091097_38"},{"course":"集训课","time":"2026-07-18T17:29:44.74Z","id":"7db6b9f26a5bb8080280ad53585f7567","className":"集训","studentName":"陈锘珊","remainHours":24,"note":"课堂一键点名","studentId":"s2091097_39"},{"course":"集训课","time":"2026-07-18T17:29:45.71Z","id":"daef7e716a5bb80900c285fa629286a7","className":"集训","studentName":"张夏琳","remainHours":27,"note":"课堂一键点名","studentId":"s2101521_46"},{"course":"集训课","time":"2026-07-22T09:33:31.108Z","id":"daef7e716a608e6b011fc52c6a4113ff","className":"集训","studentName":"郑世怡","remainHours":11,"note":"课堂一键点名","studentId":"s2053723_1"},{"course":"集训课","time":"2026-07-22T09:33:31.698Z","id":"d2a254a36a608e6b053767721a51c58e","className":"集训","studentName":"郭诺夕","remainHours":1,"note":"课堂一键点名","studentId":"s2053723_2"},{"course":"集训课","time":"2026-07-22T09:33:32.154Z","id":"d2a254a36a608e6c053767797d706394","className":"集训","studentName":"申雅琪","remainHours":3,"note":"课堂一键点名","studentId":"s2068738_7"},{"course":"集训课","time":"2026-07-22T09:33:32.604Z","id":"6fa745af6a608e6c00d16b7b53dd9c7d","className":"集训","studentName":"郑烨芽","remainHours":11,"note":"课堂一键点名","studentId":"s2068738_16"},{"course":"集训课","time":"2026-07-22T09:33:32.994Z","id":"6fa745af6a608e6d00d16b7e291c1ce6","className":"集训","studentName":"黄梓涵","remainHours":13,"note":"课堂一键点名","studentId":"s2078849_18"},{"course":"集训课","time":"2026-07-22T09:33:33.425Z","id":"daef7e716a608e6d011fc5406af88a45","className":"集训","studentName":"郑烨垚","remainHours":0,"note":"课堂一键点名","studentId":"s2078849_23"},{"course":"集训课","time":"2026-07-22T09:33:33.873Z","id":"7db6b9f26a608e6d0303f05e4b848992","className":"集训","studentName":"林雨洛","remainHours":22,"note":"课堂一键点名","studentId":"s2078849_26"},{"course":"集训课","time":"2026-07-22T09:33:34.298Z","id":"d2a254a36a608e6e053767b04ab438bb","className":"集训","studentName":"陆瑾怡","remainHours":22,"note":"课堂一键点名","studentId":"s2078849_27"},{"course":"集训课","time":"2026-07-22T09:33:34.754Z","id":"daef7e716a608e6e011fc54d1df6fd78","className":"集训","studentName":"张昕语","remainHours":13,"note":"课堂一键点名","studentId":"s2091097_31"},{"course":"集训课","time":"2026-07-22T09:33:35.153Z","id":"d2a254a36a608e6f053767ba7b497cd9","className":"集训","studentName":"杨裕辰","remainHours":11,"note":"课堂一键点名","studentId":"s2091097_37"},{"course":"集训课","time":"2026-07-22T09:33:35.559Z","id":"d2a254a36a608e6f053767c44801fe2a","className":"集训","studentName":"黄泽旭","remainHours":11,"note":"课堂一键点名","studentId":"s2091097_38"},{"course":"集训课","time":"2026-07-22T09:33:35.967Z","id":"d2a254a36a608e70053767ca7b67ce18","className":"集训","studentName":"陈锘珊","remainHours":23,"note":"课堂一键点名","studentId":"s2091097_39"},{"course":"集训课","time":"2026-07-22T09:33:36.434Z","id":"d2a254a36a608e70053767d32ad96d06","className":"集训","studentName":"张夏琳","remainHours":0,"note":"课堂一键点名","studentId":"s2101521_46"},{"course":"集训课","time":"2026-07-22T09:33:36.877Z","id":"7db6b9f26a608e700303f0a2271e706e","className":"集训","studentName":"陈锘珊","remainHours":27,"note":"课堂一键点名","studentId":"s2091097_39"},{"course":"集训课","time":"2026-07-23T03:27:06.382Z","id":"7db6b9f26a618a0a031de6ed6ea70fac","className":"集训","studentName":"郑世怡","remainHours":10,"note":"课堂一键点名","studentId":"s2053723_1"},{"course":"集训课","time":"2026-07-23T03:27:06.902Z","id":"d2a254a36a618a0b057ad246147657f6","className":"集训","studentName":"郭诺夕","remainHours":0,"note":"课堂一键点名","studentId":"s2053723_2"},{"course":"集训课","time":"2026-07-23T03:27:07.394Z","id":"7db6b9f26a618a0b031de6fe2375ec44","className":"集训","studentName":"申雅琪","remainHours":2,"note":"课堂一键点名","studentId":"s2068738_7"},{"course":"集训课","time":"2026-07-23T03:27:07.852Z","id":"d2a254a36a618a0c057ad25a59598c26","className":"集训","studentName":"郑烨芽","remainHours":10,"note":"课堂一键点名","studentId":"s2068738_16"},{"course":"集训课","time":"2026-07-23T03:27:08.313Z","id":"6fa745af6a618a0c00da218f668e3962","className":"集训","studentName":"黄梓涵","remainHours":12,"note":"课堂一键点名","studentId":"s2078849_18"},{"course":"集训课","time":"2026-07-23T03:27:08.766Z","id":"6fa745af6a618a0d00da21994835e873","className":"集训","studentName":"郑烨垚","remainHours":0,"note":"课堂一键点名","studentId":"s2078849_23"},{"course":"集训课","time":"2026-07-23T03:27:09.214Z","id":"d2a254a36a618a0d057ad27127139c65","className":"集训","studentName":"林雨洛","remainHours":21,"note":"课堂一键点名","studentId":"s2078849_26"},{"course":"集训课","time":"2026-07-23T03:27:09.736Z","id":"daef7e716a618a0e012d83601421467d","className":"集训","studentName":"陆瑾怡","remainHours":21,"note":"课堂一键点名","studentId":"s2078849_27"},{"course":"集训课","time":"2026-07-23T03:27:10.19Z","id":"6fa745af6a618a0e00da21a5340f6c91","className":"集训","studentName":"张昕语","remainHours":12,"note":"课堂一键点名","studentId":"s2091097_31"},{"course":"集训课","time":"2026-07-23T03:27:10.584Z","id":"daef7e716a618a0e012d83667352ef8d","className":"集训","studentName":"杨裕辰","remainHours":10,"note":"课堂一键点名","studentId":"s2091097_37"},{"course":"集训课","time":"2026-07-23T03:27:10.987Z","id":"7db6b9f26a618a0f031de73f36da8dbd","className":"集训","studentName":"黄泽旭","remainHours":10,"note":"课堂一键点名","studentId":"s2091097_38"},{"course":"集训课","time":"2026-07-23T03:27:11.389Z","id":"d2a254a36a618a0f057ad2901d15c088","className":"集训","studentName":"陈锘珊","remainHours":22,"note":"课堂一键点名","studentId":"s2091097_39"},{"course":"集训课","time":"2026-07-23T03:27:11.968Z","id":"d2a254a36a618a10057ad29e1e67d0cb","className":"集训","studentName":"张夏琳","remainHours":0,"note":"课堂一键点名","studentId":"s2101521_46"},{"course":"集训课","time":"2026-07-23T03:27:12.335Z","id":"daef7e716a618a10012d83784739dd0c","className":"集训","studentName":"陈锘珊","remainHours":26,"note":"课堂一键点名","studentId":"s2091097_39"},{"course":"集训课","time":"2026-07-23T09:43:49.116Z","id":"7db6b9f26a61e2550326c0595148c863","className":"集训","studentName":"郑世怡","remainHours":9,"note":"课堂一键点名","studentId":"s2053723_1"},{"course":"集训课","time":"2026-07-23T09:43:49.747Z","id":"6fa745af6a61e25500def9df067d1cd0","className":"集训","studentName":"郭诺夕","remainHours":0,"note":"课堂一键点名","studentId":"s2053723_2"},{"course":"集训课","time":"2026-07-23T09:43:50.386Z","id":"6fa745af6a61e25600def9e96049d2ca","className":"集训","studentName":"申雅琪","remainHours":1,"note":"课堂一键点名","studentId":"s2068738_7"},{"course":"集训课","time":"2026-07-23T09:43:50.9Z","id":"7db6b9f26a61e2570326c0734ff10dac","className":"集训","studentName":"郑烨芽","remainHours":9,"note":"课堂一键点名","studentId":"s2068738_16"},{"course":"集训课","time":"2026-07-23T09:43:51.507Z","id":"6fa745af6a61e25700def9f0786f907b","className":"集训","studentName":"黄梓涵","remainHours":11,"note":"课堂一键点名","studentId":"s2078849_18"},{"course":"集训课","time":"2026-07-23T09:43:51.915Z","id":"daef7e716a61e25801333ba9256c8f0b","className":"集训","studentName":"郑烨垚","remainHours":0,"note":"课堂一键点名","studentId":"s2078849_23"},{"course":"集训课","time":"2026-07-23T09:43:52.308Z","id":"6fa745af6a61e25800def9f435e586c4","className":"集训","studentName":"林雨洛","remainHours":20,"note":"课堂一键点名","studentId":"s2078849_26"},{"course":"集训课","time":"2026-07-23T09:43:52.668Z","id":"d2a254a36a61e2580595f0fa5d61263b","className":"集训","studentName":"陆瑾怡","remainHours":20,"note":"课堂一键点名","studentId":"s2078849_27"},{"course":"集训课","time":"2026-07-23T09:43:53.269Z","id":"7db6b9f26a61e2590326c09928ddf5e0","className":"集训","studentName":"张昕语","remainHours":11,"note":"课堂一键点名","studentId":"s2091097_31"},{"course":"集训课","time":"2026-07-23T09:43:53.909Z","id":"6fa745af6a61e25a00def9fb2745ecf6","className":"集训","studentName":"杨裕辰","remainHours":9,"note":"课堂一键点名","studentId":"s2091097_37"},{"course":"集训课","time":"2026-07-23T09:43:54.382Z","id":"6fa745af6a61e25a00def9ff5a125872","className":"集训","studentName":"黄泽旭","remainHours":9,"note":"课堂一键点名","studentId":"s2091097_38"},{"course":"集训课","time":"2026-07-23T09:43:54.994Z","id":"7db6b9f26a61e25b0326c0af5c59a3bb","className":"集训","studentName":"陈锘珊","remainHours":21,"note":"课堂一键点名","studentId":"s2091097_39"},{"course":"集训课","time":"2026-07-23T09:43:55.669Z","id":"d2a254a36a61e25b0595f14408cc7aa0","className":"集训","studentName":"张夏琳","remainHours":0,"note":"课堂一键点名","studentId":"s2101521_46"},{"course":"集训课","time":"2026-07-23T09:43:56.31Z","id":"d2a254a36a61e25c0595f14c606fded2","className":"集训","studentName":"陈锘珊","remainHours":25,"note":"课堂一键点名","studentId":"s2091097_39"}]}</script>
+<script>
+// ==================== 数据存储 ====================
+const STORAGE_KEYS = {
+  students: 'teacher_app_students',
+  history: 'teacher_app_history',
+  classes: 'teacher_app_classes',
+  courses: 'teacher_app_courses',
+};
+
+const DEFAULT_COURSES = ['常规课', '集训课'];
+
+function loadData(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch { return fallback; }
+}
+
+function saveData(key, data) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+// Load data: localStorage first, fall back to embedded data in file
+let students = loadData(STORAGE_KEYS.students, null);
+let history = loadData(STORAGE_KEYS.history, null);
+
+// If localStorage has no data, seed from embedded data block
+if ((!students || students.length === 0) || (!history || history.length === 0)) {
+  const el = document.getElementById('embedded-data');
+  if (el && el.textContent.trim()) {
+    try {
+      const data = JSON.parse(el.textContent);
+      if (data.students && data.students.length > 0) {
+        students = data.students;
+        history = data.history || [];
+        persistStudents();
+        persistHistory();
+      }
+    } catch (e) {}
+  }
+}
+// Final fallback
+if (!students) students = [];
+if (!history) history = [];
+
+// Courses are fixed — no longer persisted
+let courseList = DEFAULT_COURSES;
+
+// Classes are derived dynamically from students — no longer stored separately
+function getClassList() {
+  const classes = new Set(students.map(s => s.className).filter(Boolean));
+  return [...classes].sort();
+}
+
+// Persist helpers
+function persistStudents() { saveData(STORAGE_KEYS.students, students); }
+function persistHistory() { saveData(STORAGE_KEYS.history, history); }
+
+// ==================== Toast ====================
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  toast.innerHTML = `${icons[type] || ''} ${msg}`;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity .3s'; setTimeout(() => toast.remove(), 300); }, 2500);
+}
+
+// ==================== Modal helpers ====================
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ==================== Tab Switch ====================
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if (tab === 'students') {
+    document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+    document.getElementById('toolbarStudents').style.display = 'flex';
+    document.getElementById('toolbarHistory').style.display = 'none';
+    document.getElementById('studentsTableWrapper').style.display = '';
+    document.getElementById('historyTableWrapper').style.display = 'none';
+  } else {
+    document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+    document.getElementById('toolbarStudents').style.display = 'none';
+    document.getElementById('toolbarHistory').style.display = 'flex';
+    document.getElementById('studentsTableWrapper').style.display = 'none';
+    document.getElementById('historyTableWrapper').style.display = '';
+    renderHistory();
+  }
+}
+
+// ==================== Populate Dropdowns ====================
+function populateFilters() {
+  const classes = getClassList();
+
+  // Class filter for students
+  const filterClass = document.getElementById('filterClass');
+  filterClass.innerHTML = '<option value="">📂 全部班级</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  // Course filter
+  const filterCourse = document.getElementById('filterCourse');
+  filterCourse.innerHTML = '<option value="">📖 全部课程类别</option>' + courseList.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  // History class filter
+  const filterHistoryClass = document.getElementById('filterHistoryClass');
+  filterHistoryClass.innerHTML = '<option value="">📂 全部班级</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  // Class datalist for autocomplete
+  const datalist = document.getElementById('classDatalist');
+  datalist.innerHTML = classes.map(c => `<option value="${c}">`).join('');
+
+  // Form course select
+  const studentCourse = document.getElementById('studentCourse');
+  studentCourse.innerHTML = '<option value="">请选择课程类别</option>' + courseList.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+// ==================== Render Student Table ====================
+function renderStudents() {
+  const wrapper = document.getElementById('studentsTableWrapper');
+  const search = document.getElementById('searchInput').value.toLowerCase().trim();
+  const filterClass = document.getElementById('filterClass').value;
+  const filterCourse = document.getElementById('filterCourse').value;
+
+  let filtered = students.filter(s => {
+    const matchSearch = !search || s.name.toLowerCase().includes(search) || s.phone.includes(search) || s.course.toLowerCase().includes(search) || s.className.toLowerCase().includes(search);
+    const matchClass = !filterClass || s.className === filterClass;
+    const matchCourse = !filterCourse || s.course === filterCourse;
+    return matchSearch && matchClass && matchCourse;
+  });
+
+  if (filtered.length === 0) {
+    wrapper.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>${students.length === 0 ? '还没有添加学员' : '没有匹配的学员'}</p>${students.length === 0 ? '<button class="btn btn-primary" style="margin-top:12px" onclick="openAddStudentModal()">＋ 添加第一个学员</button>' : ''}</div>`;
+  } else {
+    wrapper.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>姓名</th><th>电话</th><th>课程</th><th>班级</th>
+            <th>课时</th><th>创建时间</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map(s => {
+            const hoursClass = s.hours <= 2 ? 'hours-low' : 'hours-ok';
+            return `
+              <tr>
+                <td>
+                <strong>${escHtml(s.name)}</strong>
+                ${s.note ? `<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px">${escHtml(s.note)}</div>` : ''}
+              </td>
+                <td>${escHtml(s.phone) || '—'}</td>
+                <td><span class="badge badge-blue">${escHtml(s.course)}</span></td>
+                <td><span class="badge badge-green">${escHtml(s.className)}</span></td>
+                <td class="${hoursClass}"><strong>${s.hours}</strong> 课时</td>
+                <td>${formatDateTime(s.createdAt)}</td>
+                <td>
+                  <div class="action-btns">
+                    <button class="btn btn-success btn-sm" onclick="openSigninModal('${s.id}')" ${s.hours <= 0 ? 'disabled' : ''}>✍️ 签到</button>
+                    <button class="btn btn-outline btn-sm" onclick="openEditStudentModal('${s.id}')">✏️ 编辑</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.id}')">🗑️ 删除</button>
+                  </div>
+                </td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  updateStats();
+}
+
+// ==================== Render History Table ====================
+function renderHistory() {
+  const wrapper = document.getElementById('historyTableWrapper');
+  const search = document.getElementById('searchHistory').value.toLowerCase().trim();
+  const filterClass = document.getElementById('filterHistoryClass').value;
+
+  // Group by studentId
+  const grouped = {};
+  history.forEach(h => {
+    if (!grouped[h.studentId]) {
+      grouped[h.studentId] = {
+        studentId: h.studentId,
+        studentName: h.studentName,
+        className: h.className,
+        course: h.course,
+        records: [],
+      };
+    }
+    grouped[h.studentId].records.push(h);
+  });
+
+  // Filter
+  let groups = Object.values(grouped);
+  if (search) {
+    groups = groups.filter(g => g.studentName.toLowerCase().includes(search));
+  }
+  if (filterClass) {
+    groups = groups.filter(g => g.className === filterClass);
+  }
+
+  // Sort groups: most recently active first
+  groups.sort((a, b) => {
+    const aMax = Math.max(...a.records.map(r => new Date(r.time).getTime()));
+    const bMax = Math.max(...b.records.map(r => new Date(r.time).getTime()));
+    return bMax - aMax;
+  });
+
+  // Sort records within each group: newest first
+  groups.forEach(g => g.records.sort((a, b) => new Date(b.time) - new Date(a.time)));
+
+  if (groups.length === 0) {
+    wrapper.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>暂无签到记录</p></div>';
+  } else {
+    wrapper.innerHTML = groups.map(g => `
+      <div class="history-student-card open">
+        <div class="history-card-header" onclick="toggleHistoryCard(this)">
+          <div class="history-card-info">
+            <strong>${escHtml(g.studentName)}</strong>
+            <span class="badge badge-green">${escHtml(g.className)}</span>
+            <span class="badge badge-blue">${escHtml(g.course)}</span>
+          </div>
+          <div class="history-card-meta">
+            <span>共 ${g.records.length} 次签到</span>
+            <span class="collapse-arrow">▼</span>
+          </div>
+        </div>
+        <div class="history-card-body">
+          <table>
+            <thead><tr><th>签到时间</th><th>剩余课时</th><th>备注</th></tr></thead>
+            <tbody>
+              ${g.records.map(r => `
+                <tr>
+                  <td>${formatDateTime(r.time)}</td>
+                  <td>${r.remainHours} 课时</td>
+                  <td>${escHtml(r.note) || '—'}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+function toggleHistoryCard(header) {
+  header.parentElement.classList.toggle('open');
+}
+
+// ==================== Stats ====================
+function updateStats() {
+  document.getElementById('statTotal').textContent = students.length;
+  const classes = new Set(students.map(s => s.className).filter(Boolean));
+  document.getElementById('statClasses').textContent = classes.size;
+}
+
+// ==================== Student CRUD ====================
+function openAddStudentModal() {
+  document.getElementById('studentModalTitle').textContent = '添加学员';
+  document.getElementById('editStudentId').value = '';
+  document.getElementById('studentName').value = '';
+  document.getElementById('studentPhone').value = '';
+  document.getElementById('studentCourse').value = '';
+  document.getElementById('studentClass').value = '';
+  document.getElementById('studentHours').value = '0';
+  document.getElementById('studentNote').value = '';
+  populateFilters();
+  openModal('studentModal');
+}
+
+function openEditStudentModal(id) {
+  const s = students.find(st => st.id === id);
+  if (!s) return;
+  document.getElementById('studentModalTitle').textContent = '编辑学员';
+  document.getElementById('editStudentId').value = s.id;
+  document.getElementById('studentName').value = s.name;
+  document.getElementById('studentPhone').value = s.phone || '';
+  document.getElementById('studentCourse').value = s.course;
+  document.getElementById('studentClass').value = s.className;
+  document.getElementById('studentHours').value = s.hours;
+  document.getElementById('studentNote').value = s.note || '';
+  populateFilters();
+  openModal('studentModal');
+}
+
+function saveStudent() {
+  const editId = document.getElementById('editStudentId').value;
+  const name = document.getElementById('studentName').value.trim();
+  const phone = document.getElementById('studentPhone').value.trim();
+  const course = document.getElementById('studentCourse').value;
+  const className = document.getElementById('studentClass').value;
+  const hours = parseInt(document.getElementById('studentHours').value) || 0;
+  const note = document.getElementById('studentNote').value.trim();
+
+  if (!name) { showToast('请输入学员姓名', 'error'); return; }
+  if (!course) { showToast('请选择课程类别', 'error'); return; }
+  if (!className) { showToast('请输入班级名称', 'error'); return; }
+
+  if (editId) {
+    const idx = students.findIndex(s => s.id === editId);
+    if (idx !== -1) {
+      students[idx].name = name;
+      students[idx].phone = phone;
+      students[idx].course = course;
+      students[idx].className = className;
+      students[idx].hours = hours;
+      students[idx].note = note;
+      showToast('学员信息已更新 ✅', 'success');
+    }
+  } else {
+    const newStudent = {
+      id: generateId(),
+      name,
+      phone,
+      course,
+      className,
+      hours,
+      note,
+      createdAt: new Date().toISOString(),
+    };
+    students.push(newStudent);
+    showToast('学员添加成功 🎉', 'success');
+  }
+
+  persistStudents();
+  closeModal('studentModal');
+  renderStudents();
+  populateFilters();
+}
+
+function deleteStudent(id) {
+  const s = students.find(st => st.id === id);
+  if (!s) return;
+  if (!confirm(`确定要删除学员「${s.name}」吗？\n此操作不可恢复！`)) return;
+
+  students = students.filter(st => st.id !== id);
+  persistStudents();
+  renderStudents();
+  renderHistory();
+  populateFilters();
+  showToast(`已删除学员「${s.name}」`, 'info');
+}
+
+// ==================== Sign-in ====================
+let signinTargetId = null;
+
+function openSigninModal(id) {
+  const s = students.find(st => st.id === id);
+  if (!s) return;
+  if (s.hours <= 0) { showToast('该学员课时已用完，无法签到', 'error'); return; }
+
+  signinTargetId = id;
+  document.getElementById('signinStudentName').textContent = s.name;
+  document.getElementById('signinRemainHours').textContent = s.hours;
+  document.getElementById('signinStudentClass').textContent = s.className;
+  document.getElementById('signinNote').value = '';
+  openModal('signinModal');
+}
+
+function confirmSignin() {
+  if (!signinTargetId) return;
+  const s = students.find(st => st.id === signinTargetId);
+  if (!s) return;
+  if (s.hours <= 0) { showToast('课时不足，无法签到', 'error'); return; }
+
+  s.hours -= 1;
+  const note = document.getElementById('signinNote').value.trim();
+  const record = {
+    id: generateId(),
+    studentId: s.id,
+    studentName: s.name,
+    className: s.className,
+    course: s.course,
+    time: new Date().toISOString(),
+    remainHours: s.hours,
+    note,
+  };
+  history.push(record);
+
+  persistStudents();
+  persistHistory();
+  closeModal('signinModal');
+  signinTargetId = null;
+  renderStudents();
+  renderHistory();
+  showToast(`签到成功！「${s.name}」剩余 ${s.hours} 课时 ✍️`, 'success');
+}
+
+// ==================== Batch Sign-in ====================
+function openBatchSigninModal() {
+  // Populate class dropdown
+  const select = document.getElementById('batchClassSelect');
+  const classes = getClassList();
+  select.innerHTML = '<option value="">请选择班级</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('batchStudentList').innerHTML = '';
+  openModal('batchSigninModal');
+}
+
+function renderBatchStudentList() {
+  const className = document.getElementById('batchClassSelect').value;
+  const courseFilter = document.getElementById('batchCourseSelect').value;
+  const container = document.getElementById('batchStudentList');
+
+  if (!className) {
+    container.innerHTML = '';
+    return;
+  }
+
+  let classStudents = students.filter(s => s.className === className);
+  if (courseFilter) {
+    classStudents = classStudents.filter(s => s.course === courseFilter);
+  }
+
+  if (classStudents.length === 0) {
+    container.innerHTML = '<div class="empty-state" style="padding:30px"><p>该班级暂无学员</p></div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr><th style="width:40px">签到</th><th>姓名</th><th>课程</th><th>剩余课时</th><th>状态</th></tr>
+      </thead>
+      <tbody>
+        ${classStudents.map(s => {
+          const noHours = s.hours <= 0;
+          return `
+            <tr>
+              <td>
+                <input type="checkbox" class="batch-check" value="${s.id}" ${noHours ? 'disabled' : 'checked'} style="width:18px;height:18px;cursor:pointer">
+              </td>
+              <td><strong>${escHtml(s.name)}</strong></td>
+              <td><span class="badge badge-blue">${escHtml(s.course)}</span></td>
+              <td class="${s.hours <= 2 ? 'hours-low' : 'hours-ok'}"><strong>${s.hours}</strong></td>
+              <td>${noHours ? '<span class="badge badge-orange">😴 课时不足</span>' : '<span class="badge badge-green">✅ 可签到</span>'}</td>
+            </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-outline btn-sm" onclick="document.querySelectorAll('.batch-check:not([disabled])').forEach(c=>c.checked=true)">全选</button>
+      <button class="btn btn-outline btn-sm" onclick="document.querySelectorAll('.batch-check:not([disabled])').forEach(c=>c.checked=false)">取消全选</button>
+    </div>`;
+}
+
+function confirmBatchSignin() {
+  const className = document.getElementById('batchClassSelect').value;
+  if (!className) { showToast('请选择班级', 'error'); return; }
+
+  const checkboxes = document.querySelectorAll('.batch-check:checked');
+  if (checkboxes.length === 0) { showToast('没有可签到的学员', 'error'); return; }
+
+  let signedCount = 0;
+  let absentCount = 0;
+
+  checkboxes.forEach(cb => {
+    const s = students.find(st => st.id === cb.value);
+    if (!s || s.hours <= 0) return;
+
+    s.hours -= 1;
+    signedCount++;
+
+    history.push({
+      id: generateId(),
+      studentId: s.id,
+      studentName: s.name,
+      className: s.className,
+      course: s.course,
+      time: new Date().toISOString(),
+      remainHours: s.hours,
+      note: '',
+    });
+  });
+
+  // Count absent students (unchecked, who had hours)
+  const allChecks = document.querySelectorAll('.batch-check:not([disabled])');
+  absentCount = allChecks.length - checkboxes.length;
+
+  persistStudents();
+  persistHistory();
+  closeModal('batchSigninModal');
+  renderStudents();
+  renderHistory();
+
+  let msg = `批量签到完成！签到 ${signedCount} 人`;
+  if (absentCount > 0) msg += `，请假 ${absentCount} 人`;
+  showToast(msg, 'success');
+}
+
+// ==================== History ====================
+function clearHistory() {
+  if (!confirm('确定要清空所有签到记录吗？此操作不可恢复！')) return;
+  history = [];
+  persistHistory();
+  renderHistory();
+  showToast('签到记录已清空', 'info');
+}
+
+// ==================== Utilities ====================
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function formatDate(iso) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDateTime(iso) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
+
+function escHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ==================== Export / Import ====================
+function exportData() {
+  const data = { students, history, exportedAt: new Date().toISOString() };
+  const json = JSON.stringify(data);
+
+  let html = document.documentElement.outerHTML;
+  // Replace the embedded-data script content with new data
+  html = html.replace(
+    /(<script type="application\/json" id="embedded-data">)[\s\S]*?(<\/script>)/,
+    '$1' + json + '$2'
+  );
+
+  const blob = new Blob(['<!DOCTYPE html>\n', html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `学员管理系统_${new Date().toISOString().slice(0, 10)}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('已导出为完整文件，打开即用 ✅', 'success');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.students || !Array.isArray(data.students)) {
+        throw new Error('数据格式不正确');
+      }
+
+      const action = confirm(
+        `即将导入：\n• ${data.students.length} 名学员\n• ${(data.history || []).length} 条签到记录\n\n点击"确定"覆盖当前数据\n点击"取消"放弃导入`
+      );
+
+      if (!action) return;
+
+      students = data.students;
+      history = data.history || [];
+      persistStudents();
+      persistHistory();
+      populateFilters();
+      renderStudents();
+      renderHistory();
+      updateStats();
+      showToast(`导入成功！${students.length} 名学员已恢复 🎉`, 'success');
+    } catch (err) {
+      showToast('导入失败：文件格式不正确 ❌', 'error');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ==================== Init ====================
+function init() {
+  populateFilters();
+  renderStudents();
+  updateStats();
+}
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('active');
+  });
+});
+
+// Keyboard shortcut: Escape to close all modals
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.active').forEach(o => o.classList.remove('active'));
+  }
+});
+
+init();
+</script>
+
+</body>
+</html>
