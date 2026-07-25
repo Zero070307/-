@@ -112,6 +112,8 @@ body {
 .btn-success:hover { background: #059669; }
 .btn-danger { background: var(--danger); color: #fff; }
 .btn-danger:hover { background: #dc2626; }
+.btn-warning { background: var(--warning); color: #fff; }
+.btn-warning:hover { background: #d97706; }
 .btn-outline {
   background: var(--surface); color: var(--text);
   border: 1.5px solid var(--border);
@@ -225,6 +227,8 @@ tbody tr:last-child td { border-bottom: none; }
   color: var(--text-muted); transition: all .2s;
 }
 .tab-btn.active { background: var(--primary); color: #fff; box-shadow: var(--shadow); }
+.history-sub-tab.active { background: var(--primary) !important; color: #fff !important; }
+.history-sub-tab:not(.active) { background: var(--surface); color: var(--text-muted); }
 .history-table td { vertical-align: middle; }
 
 /* ===== History Student Cards ===== */
@@ -249,6 +253,7 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .collapse-arrow { font-size: .7rem; transition: transform .2s; }
 .history-student-card.open .collapse-arrow { transform: rotate(180deg); }
+.arch-arrow.open { transform: rotate(180deg); }
 .history-card-body {
   display: none; border-top: 1px solid var(--border);
   padding: 0;
@@ -280,9 +285,7 @@ tbody tr:last-child td { border-bottom: none; }
   .app-header { padding: 10px 12px; }
   .app-header h1 { font-size: 1rem; }
   .header-actions { gap: 4px; flex-wrap: wrap; }
-  .header-actions .btn {
-    padding: 6px 10px; font-size: .75rem; gap: 3px;
-  }
+  .header-actions .btn { padding: 6px 10px; font-size: .75rem; gap: 3px; }
   .toolbar { flex-direction: column; }
   .search-box { min-width: 100%; }
   .filter-select { width: 100%; }
@@ -346,6 +349,7 @@ tbody tr:last-child td { border-bottom: none; }
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('students')">🎓 学员管理</button>
     <button class="tab-btn" onclick="switchTab('history')">📋 签到记录</button>
+    <button class="tab-btn" onclick="switchTab('archive')">📂 学员档案</button>
   </div>
 
   <!-- ===== Toolbar (Students Tab) ===== -->
@@ -372,8 +376,12 @@ tbody tr:last-child td { border-bottom: none; }
     <select class="filter-select" id="filterHistoryClass" onchange="renderHistory()">
       <option value="">📂 全部班级</option>
     </select>
+    <button class="btn btn-warning btn-sm" onclick="openArchiveModal()">📦 一键结课</button>
     <button class="btn btn-danger btn-sm" onclick="clearHistory()">🗑️ 清空记录</button>
   </div>
+
+  <!-- ===== Archive Filter Bar ===== -->
+  <div id="historySubTabs" style="display:none;margin-bottom:12px;flex-wrap:wrap;gap:4px"></div>
 
   <!-- ===== Student Table ===== -->
   <div class="table-wrapper" id="studentsTableWrapper">
@@ -389,6 +397,17 @@ tbody tr:last-child td { border-bottom: none; }
     <div class="empty-state">
       <div class="empty-icon">📋</div>
       <p>暂无签到记录</p>
+    </div>
+  </div>
+
+  <!-- ===== Archive Filter Bar ===== -->
+  <div id="archiveSubTabs" style="display:none;margin-bottom:12px;flex-wrap:wrap;gap:4px"></div>
+
+  <!-- ===== Archive Tab ===== -->
+  <div class="table-wrapper" id="archiveTableWrapper" style="display: none;">
+    <div class="empty-state">
+      <div class="empty-icon">📂</div>
+      <p>暂无学员档案</p>
     </div>
   </div>
 </div>
@@ -511,6 +530,57 @@ tbody tr:last-child td { border-bottom: none; }
   </div>
 </div>
 
+<!-- ===== Student Profile Modal ===== -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal" style="max-width: 520px;">
+    <div class="modal-header">
+      <h2>📋 学生档案</h2>
+      <button class="modal-close" onclick="closeModal('profileModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="signin-student-info">
+        <div class="name" id="profileName">—</div>
+        <div class="meta"><span id="profileClass">—</span> &nbsp;|&nbsp; 📞 <span id="profilePhone">—</span></div>
+      </div>
+      <div style="font-size:.85rem;font-weight:600;margin-bottom:8px">📚 课程履历</div>
+      <div id="profileHistory" style="max-height:300px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('profileModal')">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Archive Course Modal ===== -->
+<div class="modal-overlay" id="archiveModal">
+  <div class="modal" style="max-width: 420px;">
+    <div class="modal-header">
+      <h2>📦 一键结课归档</h2>
+      <button class="modal-close" onclick="closeModal('archiveModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>📚 选择课程类别</label>
+        <select id="archiveCourseSelect">
+          <option value="">全部课程</option>
+          <option value="常规课">常规课</option>
+          <option value="集训课">集训课</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>🏷️ 归档名称</label>
+        <input type="text" id="archiveName" placeholder="如：2026春季学期、暑假集训第一期" autocomplete="off">
+      </div>
+      <div id="archiveCount" style="font-size:.85rem;color:var(--text-muted);margin-bottom:8px"></div>
+      <div class="signin-hint">⚠️ 将指定课程类别的所有进行中签到记录归为一档。已归档的不受影响。</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('archiveModal')">取消</button>
+      <button class="btn btn-warning" onclick="confirmArchive()">📦 确认结课</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Password Lock ===== -->
 <div class="modal-overlay active" id="passwordOverlay" style="z-index:999; background:rgba(0,0,0,.7); backdrop-filter:blur(8px)">
   <div class="modal" style="max-width:360px; text-align:center">
@@ -607,20 +677,39 @@ function closeModal(id) { document.getElementById(id).classList.remove('active')
 
 // ==================== Tab Switch ====================
 function switchTab(tab) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const tabs = document.querySelectorAll('.tab-btn');
+  tabs.forEach(b => b.classList.remove('active'));
+  const tbStudents = document.getElementById('toolbarStudents');
+  const tbHistory = document.getElementById('toolbarHistory');
+  const twStudents = document.getElementById('studentsTableWrapper');
+  const twHistory = document.getElementById('historyTableWrapper');
+  const twArchive = document.getElementById('archiveTableWrapper');
+  [tbStudents, tbHistory].forEach(e => e.style.display = 'none');
+  [twStudents, twHistory, twArchive].forEach(e => e.style.display = 'none');
+
   if (tab === 'students') {
-    document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
-    document.getElementById('toolbarStudents').style.display = 'flex';
-    document.getElementById('toolbarHistory').style.display = 'none';
-    document.getElementById('studentsTableWrapper').style.display = '';
-    document.getElementById('historyTableWrapper').style.display = 'none';
-  } else {
-    document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
-    document.getElementById('toolbarStudents').style.display = 'none';
-    document.getElementById('toolbarHistory').style.display = 'flex';
-    document.getElementById('studentsTableWrapper').style.display = 'none';
-    document.getElementById('historyTableWrapper').style.display = '';
+    tabs[0].classList.add('active');
+    tbStudents.style.display = 'flex';
+    document.getElementById('historySubTabs').style.display = 'none';
+    document.getElementById('archiveSubTabs').style.display = 'none';
+    twStudents.style.display = '';
+  } else if (tab === 'history') {
+    document.getElementById('archiveSubTabs').style.display = 'none';
+    tabs[1].classList.add('active');
+    tbHistory.style.display = 'flex';
+    document.getElementById('historySubTabs').style.display = 'flex';
+    twHistory.style.display = '';
+    historyView = 'active';
+    buildArchiveTabs();
     renderHistory();
+  } else {
+    tabs[2].classList.add('active');
+    document.getElementById('historySubTabs').style.display = 'none';
+    document.getElementById('archiveSubTabs').style.display = 'flex';
+    twArchive.style.display = '';
+    archiveView = 'active';
+    buildArchivePageTabs();
+    renderArchive();
   }
 }
 
@@ -710,6 +799,80 @@ function renderHistory() {
   const search = document.getElementById('searchHistory').value.toLowerCase().trim();
   const filterClass = document.getElementById('filterHistoryClass').value;
 
+  // --- Archived view (specific archive name) ---
+  if (historyView !== 'active') {
+    const archivedRecords = history.filter(h => h.archiveName === historyView);
+    if (archivedRecords.length === 0) {
+      wrapper.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><p>该归档下暂无记录</p></div>';
+      return;
+    }
+
+    // Group by studentId + archiveName
+    const grouped = {};
+    archivedRecords.forEach(h => {
+      const key = h.studentId + '|' + h.archiveName;
+      if (!grouped[key]) {
+        grouped[key] = { studentName: h.studentName, className: h.className, archiveName: h.archiveName, records: [] };
+      }
+      grouped[key].records.push(h);
+    });
+
+    // Flatten and sort: newest last-sign-in first
+    let list = Object.values(grouped).sort((a, b) => {
+      const bMax = Math.max(...b.records.map(r => new Date(r.time).getTime()));
+      const aMax = Math.max(...a.records.map(r => new Date(r.time).getTime()));
+      return bMax - aMax;
+    });
+
+    // Search/filter
+    if (search) list = list.filter(g => g.studentName.toLowerCase().includes(search));
+    if (filterClass) list = list.filter(g => g.className === filterClass);
+
+    if (list.length === 0) {
+      wrapper.innerHTML = '<div class="empty-state"><div class="empty-icon">📦</div><p>没有匹配的归档记录</p></div>';
+      return;
+    }
+
+    // Sort records within each group: newest first
+    list.forEach(g => g.records.sort((a, b) => new Date(b.time) - new Date(a.time)));
+
+    wrapper.innerHTML = list.map(g => {
+      const courses = [...new Set(g.records.map(r => r.course))];
+      const times = g.records.map(r => r.time).sort();
+      return `
+      <div class="history-student-card open" style="margin-bottom:8px">
+        <div class="history-card-header" onclick="toggleHistoryCard(this)">
+          <div class="history-card-info">
+            <strong>${escHtml(g.studentName)}</strong>
+            <span class="badge badge-green">${escHtml(g.className)}</span>
+            <span style="font-size:.75rem;color:var(--text-muted)">📦 ${escHtml(g.archiveName)}</span>
+          </div>
+          <div class="history-card-meta">
+            <span>${g.records.length} 次 · ${formatDate(times[0])} ~ ${formatDate(times[times.length-1])}</span>
+            <span class="collapse-arrow">▼</span>
+          </div>
+        </div>
+        <div class="history-card-body">
+          <table>
+            <thead><tr><th>时间</th><th>课程</th><th>剩余</th><th>备注</th><th style="width:40px"></th></tr></thead>
+            <tbody>
+              ${g.records.map(r => `
+                <tr>
+                  <td>${formatDateTime(r.time)}</td>
+                  <td><span class="badge ${r.course === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(r.course)}</span></td>
+                  <td>${r.remainHours} 课时</td>
+                  <td>${escHtml(r.note) || '—'}</td>
+                  <td><button class="btn btn-danger btn-xs" onclick="deleteHistoryRecord('${r.id}')">✕</button></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `}).join('');
+    return;
+  }
+
+  // --- Active view ---
   // Group by studentId
   const grouped = {};
   history.forEach(h => {
@@ -747,16 +910,26 @@ function renderHistory() {
   if (groups.length === 0) {
     wrapper.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>暂无签到记录</p></div>';
   } else {
-    wrapper.innerHTML = groups.map(g => `
+    // Active view: only show non-archived records
+    const activeGroups = groups.map(g => ({
+      ...g,
+      records: g.records.filter(r => !r.archiveName)
+    })).filter(g => g.records.length > 0);
+
+    if (activeGroups.length === 0) {
+      wrapper.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><p>当前无进行中记录</p></div>';
+      return;
+    }
+
+    wrapper.innerHTML = activeGroups.map(g => `
       <div class="history-student-card open">
         <div class="history-card-header" onclick="toggleHistoryCard(this)">
           <div class="history-card-info">
             <strong>${escHtml(g.studentName)}</strong>
             <span class="badge badge-green">${escHtml(g.className)}</span>
-            <span class="badge ${g.course === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(g.course)}</span>
           </div>
           <div class="history-card-meta">
-            <span>共 ${g.records.length} 次签到</span>
+            <span>${g.records.length} 次签到</span>
             <span class="collapse-arrow">▼</span>
           </div>
         </div>
@@ -769,7 +942,7 @@ function renderHistory() {
                   <td>${formatDateTime(r.time)}</td>
                   <td>${r.remainHours} 课时</td>
                   <td>${escHtml(r.note) || '—'}</td>
-                  <td><button class="btn btn-danger btn-xs" onclick="deleteHistoryRecord('${r.id}')" title="删除此记录">✕</button></td>
+                  <td><button class="btn btn-danger btn-xs" onclick="deleteHistoryRecord('${r.id}')">✕</button></td>
                 </tr>`).join('')}
             </tbody>
           </table>
@@ -781,6 +954,94 @@ function renderHistory() {
 
 function toggleHistoryCard(header) {
   header.parentElement.classList.toggle('open');
+}
+
+// ==================== Archive Tab ====================
+function buildArchivePageTabs() {
+  const container = document.getElementById('archiveSubTabs');
+  const archiveNames = [...new Set(history.filter(h => h.archiveName).map(h => h.archiveName))].sort();
+
+  if (archiveView !== 'active' && !archiveNames.includes(archiveView)) {
+    archiveView = 'active';
+  }
+
+  let html = `<button class="archive-sub-tab ${archiveView === 'active' ? 'active' : ''}" onclick="switchArchiveView('active')" style="padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:${archiveView==='active'?'var(--primary)':'var(--surface)'};font-size:.78rem;font-weight:600;cursor:pointer;color:${archiveView==='active'?'#fff':'var(--text-muted)'};white-space:nowrap">📝 当前</button>`;
+
+  archiveNames.forEach(name => {
+    const sids = [...new Set(history.filter(h => h.archiveName === name).map(h => h.studentId))];
+    const count = sids.length;
+    html += `<button class="archive-sub-tab ${archiveView === name ? 'active' : ''}" onclick="switchArchiveView('${name.replace(/'/g, "\\'")}')" style="padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:${archiveView===name?'var(--primary)':'var(--surface)'};font-size:.78rem;font-weight:600;cursor:pointer;color:${archiveView===name?'#fff':'var(--text-muted)'};white-space:nowrap">📦 ${escHtml(name)} · ${count}人</button>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function switchArchiveView(view) {
+  archiveView = view;
+  buildArchivePageTabs();
+  renderArchive();
+}
+
+function renderArchive() {
+  const wrapper = document.getElementById('archiveTableWrapper');
+
+  // Archived view: show students from a specific archive
+  if (archiveView !== 'active') {
+    const records = history.filter(h => h.archiveName === archiveView);
+    const studentMap = {};
+    records.forEach(r => {
+      if (!studentMap[r.studentId]) {
+        studentMap[r.studentId] = { name: r.studentName, className: r.className, courses: new Set(), records: [] };
+      }
+      studentMap[r.studentId].courses.add(r.course);
+      studentMap[r.studentId].records.push(r);
+    });
+
+    const list = Object.values(studentMap).sort((a, b) => b.records.length - a.records.length);
+
+    if (list.length === 0) {
+      wrapper.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><p>该归档下暂无学员</p></div>';
+      return;
+    }
+
+    wrapper.innerHTML = list.map(s => {
+      const courses = [...s.courses];
+      const times = s.records.map(r => r.time).sort();
+      return `
+      <div class="history-student-card" style="margin-bottom:8px">
+        <div class="history-card-header" style="cursor:default">
+          <div class="history-card-info">
+            <strong>${escHtml(s.name)}</strong>
+            <span class="badge badge-green">${escHtml(s.className)}</span>
+            ${courses.map(c => `<span class="badge ${c === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(c)}</span>`).join(' ')}
+          </div>
+          <div class="history-card-meta">${s.records.length} 次签到 · ${formatDate(times[0])} ~ ${formatDate(times[times.length-1])}</div>
+        </div>
+      </div>
+    `}).join('');
+    return;
+  }
+
+  // Active view: show all current students
+  if (students.length === 0) {
+    wrapper.innerHTML = '<div class="empty-state"><div class="empty-icon">📂</div><p>暂无学员</p></div>';
+    return;
+  }
+
+  const list = [...students].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  wrapper.innerHTML = list.map(s => `
+    <div class="history-student-card" style="margin-bottom:8px">
+      <div class="history-card-header" style="cursor:default">
+        <div class="history-card-info">
+          <strong>${escHtml(s.name)}</strong>
+          <span class="badge badge-green">${escHtml(s.className)}</span>
+          <span class="badge ${s.course === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(s.course)}</span>
+        </div>
+        <div class="history-card-meta">${s.hours} 课时 · ${formatDate(s.createdAt)}</div>
+      </div>
+    </div>
+  `).join('');
 }
 
 // ==================== Stats ====================
@@ -879,6 +1140,34 @@ function deleteStudent(id) {
 
 // ==================== Sign-in ====================
 let signinTargetId = null;
+let historyView = 'active'; // 'active' or archive name
+let archiveView = 'active'; // 'active' or archive name
+
+function buildArchiveTabs() {
+  const container = document.getElementById('historySubTabs');
+  const archiveNames = [...new Set(history.filter(h => h.archiveName).map(h => h.archiveName))].sort();
+
+  // Keep current selection if still valid
+  if (historyView !== 'active' && !archiveNames.includes(historyView)) {
+    historyView = 'active';
+  }
+
+  let html = `<button class="history-sub-tab ${historyView === 'active' ? 'active' : ''}" onclick="switchHistoryView('active')" style="padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-size:.78rem;font-weight:600;cursor:pointer;color:var(--text-muted);white-space:nowrap">📝 当前</button>`;
+
+  archiveNames.forEach(name => {
+    const count = history.filter(h => h.archiveName === name).length;
+    const active = historyView === name;
+    html += `<button class="history-sub-tab ${active ? 'active' : ''}" onclick="switchHistoryView('${name.replace(/'/g, "\\'")}')" style="padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:${active ? 'var(--primary)' : 'var(--surface)'};font-size:.78rem;font-weight:600;cursor:pointer;color:${active ? '#fff' : 'var(--text-muted)'};white-space:nowrap">📦 ${escHtml(name)} · ${count}</button>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function switchHistoryView(view) {
+  historyView = view;
+  buildArchiveTabs();
+  renderHistory();
+}
 
 function openSigninModal(id) {
   const s = students.find(st => st.id === id);
@@ -920,6 +1209,91 @@ function confirmSignin() {
   renderStudents();
   renderHistory();
   showToast(`签到成功！「${s.name}」剩余 ${s.hours} 课时 ✍️`, 'success');
+}
+
+// ==================== Student Profile ====================
+function openProfile(studentId) {
+  const s = students.find(st => st.id === studentId);
+  if (!s) return;
+  document.getElementById('profileName').textContent = s.name;
+  document.getElementById('profileClass').textContent = s.className;
+  document.getElementById('profilePhone').textContent = s.phone || '未填写';
+
+  // Build course history from sign-in records
+  const records = history.filter(h => h.studentId === studentId);
+  const courseMap = {};
+  records.forEach(r => {
+    const key = r.course + '|' + (r.archiveName || '进行中');
+    if (!courseMap[key]) courseMap[key] = { course: r.course, archiveName: r.archiveName || '进行中', count: 0, first: r.time, last: r.time };
+    courseMap[key].count++;
+    if (r.time < courseMap[key].first) courseMap[key].first = r.time;
+    if (r.time > courseMap[key].last) courseMap[key].last = r.time;
+  });
+
+  const entries = Object.values(courseMap).sort((a, b) => b.last.localeCompare(a.last));
+  const container = document.getElementById('profileHistory');
+  if (entries.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem">暂无签到记录</p>';
+  } else {
+    container.innerHTML = `
+      <table>
+        <thead><tr><th>课程</th><th>归档</th><th>次数</th><th>时间范围</th></tr></thead>
+        <tbody>
+          ${entries.map(e => `
+            <tr>
+              <td><span class="badge ${e.course === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(e.course)}</span></td>
+              <td>${escHtml(e.archiveName)}</td>
+              <td>${e.count} 次</td>
+              <td>${formatDate(e.first)} ~ ${formatDate(e.last)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
+  }
+  openModal('profileModal');
+}
+
+// ==================== Archive (结课) ====================
+function openArchiveModal() {
+  document.getElementById('archiveCourseSelect').value = '';
+  document.getElementById('archiveName').value = '';
+  document.getElementById('archiveCount').textContent = '';
+  openModal('archiveModal');
+
+  // Show live count
+  document.getElementById('archiveCourseSelect').onchange = updateArchiveCount;
+  updateArchiveCount();
+}
+
+function updateArchiveCount() {
+  const course = document.getElementById('archiveCourseSelect').value;
+  let count;
+  if (course) {
+    count = history.filter(h => h.course === course && !h.archiveName).length;
+  } else {
+    count = history.filter(h => !h.archiveName).length;
+  }
+  document.getElementById('archiveCount').textContent = `当前进行中记录：${count} 条${course ? '（' + course + '）' : ''}`;
+}
+
+function confirmArchive() {
+  const course = document.getElementById('archiveCourseSelect').value;
+  const name = document.getElementById('archiveName').value.trim();
+  if (!name) { showToast('请输入归档名称', 'error'); return; }
+
+  let count = 0;
+  history.forEach(h => {
+    if (!h.archiveName && (!course || h.course === course)) {
+      h.archiveName = name;
+      count++;
+    }
+  });
+
+  if (count === 0) { showToast('没有可归档的记录', 'error'); return; }
+
+  persistHistory();
+  closeModal('archiveModal');
+  renderHistory();
+  showToast(`已归档 ${count} 条记录 → "${name}"`, 'success');
 }
 
 // ==================== Batch Sign-in ====================
