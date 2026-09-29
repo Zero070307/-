@@ -2,6 +2,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
+function embeddedData(html, fileName) {
+  const match = html.match(/<script type="application\/json" id="embedded-data">([\s\S]*?)<\/script>/);
+  assert.ok(match, `${fileName} has an embedded-data block`);
+  return match[1].trim();
+}
+
 function loadLogic() {
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const match = html.match(/\/\* TESTABLE_LOGIC_START \*\/([\s\S]*?)\/\* TESTABLE_LOGIC_END \*\//);
@@ -12,6 +18,13 @@ function loadLogic() {
 }
 
 const logic = loadLogic();
+
+{
+  for (const fileName of ['index.html', 'teacher-app.html']) {
+    const html = fs.readFileSync(new URL(`../${fileName}`, import.meta.url), 'utf8');
+    assert.equal(embeddedData(html, fileName), '', `${fileName} has no built-in student or attendance data`);
+  }
+}
 
 {
   const student = { courses: [{ type: '常规课', hours: 5 }, { type: '集训课', hours: 2 }] };
