@@ -1737,9 +1737,9 @@ document.addEventListener('keydown', function(e) {
   }
 });
 </script>
-<script type="module">
-  import { createCloudApi } from './js/cloud-api.js';
-  window.startCloudPage(createCloudApi);
+<script src="./js/cloud-api.js"></script>
+<script>
+  window.startCloudPage(window.TeacherCloudApi.createCloudApi);
 </script>
 
 </body>

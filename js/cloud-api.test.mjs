@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import test from 'node:test';
-import { createCloudApi } from './cloud-api.js';
+
+const require = createRequire(import.meta.url);
+const { createCloudApi } = require('./cloud-api.js');
 
 function createStorage() {
   const values = new Map();
@@ -47,4 +51,10 @@ test('expired session is removed before a state request', async () => {
   await assert.rejects(client.getState(), /登录已过期/);
   assert.equal(storage.getItem('teacher_app_cloud_session'), null);
   assert.equal(fetch.calls.length, 0);
+});
+
+test('standalone app loads the cloud client without an ES-module file import', async () => {
+  const html = await fs.readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /<script src="\.\/js\/cloud-api\.js"><\/script>/);
+  assert.doesNotMatch(html, /<script type="module">\s*import \{ createCloudApi \} from '\.\/js\/cloud-api\.js';/);
 });

@@ -1,6 +1,6 @@
 const SESSION_STORAGE_KEY = 'teacher_app_cloud_session';
 
-export class CloudApiError extends Error {
+class CloudApiError extends Error {
   constructor(message, status = 0) {
     super(message);
     this.name = 'CloudApiError';
@@ -20,7 +20,7 @@ function messageFor(status, body) {
   return '云端服务暂时不可用，请检查网络后重试';
 }
 
-export function createCloudApi({ baseUrl, fetch = globalThis.fetch, storage = globalThis.localStorage, now = () => new Date() }) {
+function createCloudApi({ baseUrl, fetch = globalThis.fetch, storage = globalThis.localStorage, now = () => new Date() }) {
   if (!baseUrl) throw new Error('缺少云端接口地址');
   const url = baseUrl.replace(/\/$/, '');
 
@@ -81,7 +81,7 @@ export function createCloudApi({ baseUrl, fetch = globalThis.fetch, storage = gl
   };
 }
 
-if (typeof window !== 'undefined') {
-  window.createCloudApi = createCloudApi;
-  window.CloudApiError = CloudApiError;
-}
+const cloudApiExports = { createCloudApi, CloudApiError };
+
+if (typeof globalThis !== 'undefined') globalThis.TeacherCloudApi = cloudApiExports;
+if (typeof module !== 'undefined' && module.exports) module.exports = cloudApiExports;
