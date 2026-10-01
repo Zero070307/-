@@ -433,23 +433,19 @@ tbody tr:last-child td { border-bottom: none; }
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>📚 课程类别 *</label>
-          <select id="studentCourse">
-            <option value="">请选择课程类别</option>
-            <option value="常规课">常规课</option>
-            <option value="集训课">集训课</option>
-          </select>
+          <label>📖 常规课课时</label>
+          <input type="number" id="studentNormalHours" placeholder="0 表示不报此课" min="0" value="0">
         </div>
         <div class="form-group">
-          <label>🏫 班级 *</label>
-          <input type="text" id="studentClass" list="classDatalist" placeholder="输入班级名称，如：周六上午班" autocomplete="off">
-          <datalist id="classDatalist"></datalist>
+          <label>🏆 集训课课时</label>
+          <input type="number" id="studentTrainingHours" placeholder="0 表示不报此课" min="0" value="0">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>⏰ 总课时（剩余） *</label>
-          <input type="number" id="studentHours" placeholder="请输入课时数" min="0" value="0">
+          <label>🏫 班级 *</label>
+          <input type="text" id="studentClass" list="classDatalist" placeholder="输入班级名称，如：周六上午班" autocomplete="off">
+          <datalist id="classDatalist"></datalist>
         </div>
         <div class="form-group">
           <label>📝 备注</label>
@@ -483,6 +479,12 @@ tbody tr:last-child td { border-bottom: none; }
         ⚠️ 签到后将自动扣除 1 个课时
       </div>
       <div class="form-group">
+        <label>📚 课程类别</label>
+        <select id="signinCourseSelect">
+          <option value="">请选择课程</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>📝 备注（可选）</label>
         <input type="text" id="signinNote" placeholder="例如：第3节课，表现优秀" autocomplete="off">
       </div>
@@ -510,9 +512,9 @@ tbody tr:last-child td { border-bottom: none; }
           </select>
         </div>
         <div class="form-group">
-          <label>📚 课程类别</label>
+          <label>📚 课程类别 *</label>
           <select id="batchCourseSelect" onchange="renderBatchStudentList()">
-            <option value="">全部课程</option>
+            <option value="">请选择课程</option>
             <option value="常规课">常规课</option>
             <option value="集训课">集训课</option>
           </select>
@@ -647,6 +649,39 @@ if ((!students || students.length === 0) || (!history || history.length === 0)) 
 if (!students) students = [];
 if (!history) history = [];
 
+// Migration: convert old {course, hours} to new {courses:[], studentNo}
+function migrateStudents() {
+  let changed = false;
+  students.forEach(s => {
+    if (!s.studentNo) {
+      s.studentNo = generateStudentNo(s.createdAt || new Date().toISOString());
+      changed = true;
+    }
+    if (!s.courses) {
+      // Migrate old single-course format
+      s.courses = [];
+      if (s.course && s.hours > 0) {
+        s.courses.push({ type: s.course, hours: s.hours });
+      }
+      delete s.course;
+      delete s.hours;
+      changed = true;
+    }
+  });
+  if (changed) persistStudents();
+}
+migrateStudents();
+
+// Generate student number: YYMMDD-NN based on creation date
+function generateStudentNo(createdAt) {
+  const d = new Date(createdAt);
+  const yymmdd = String(d.getFullYear()).slice(2) + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+  // Count existing students with same date prefix
+  const prefix = yymmdd;
+  const count = students.filter(s => s.studentNo && s.studentNo.startsWith(prefix)).length;
+  return prefix + '-' + String(count + 1).padStart(2, '0');
+}
+
 // Courses are fixed — no longer persisted
 let courseList = DEFAULT_COURSES;
 
@@ -732,10 +767,6 @@ function populateFilters() {
   // Class datalist for autocomplete
   const datalist = document.getElementById('classDatalist');
   datalist.innerHTML = classes.map(c => `<option value="${c}">`).join('');
-
-  // Form course select
-  const studentCourse = document.getElementById('studentCourse');
-  studentCourse.innerHTML = '<option value="">请选择课程类别</option>' + courseList.map(c => `<option value="${c}">${c}</option>`).join('');
 }
 
 // ==================== Render Student Table ====================
@@ -746,9 +777,10 @@ function renderStudents() {
   const filterCourse = document.getElementById('filterCourse').value;
 
   let filtered = students.filter(s => {
-    const matchSearch = !search || s.name.toLowerCase().includes(search) || s.phone.includes(search) || s.course.toLowerCase().includes(search) || s.className.toLowerCase().includes(search);
+    const courseNames = (s.courses || []).map(c => c.type);
+    const matchSearch = !search || s.name.toLowerCase().includes(search) || (s.phone || '').includes(search) || (s.studentNo || '').includes(search) || s.className.toLowerCase().includes(search) || courseNames.join(' ').includes(search);
     const matchClass = !filterClass || s.className === filterClass;
-    const matchCourse = !filterCourse || s.course === filterCourse;
+    const matchCourse = !filterCourse || courseNames.includes(filterCourse);
     return matchSearch && matchClass && matchCourse;
   });
 
@@ -759,27 +791,27 @@ function renderStudents() {
       <table>
         <thead>
           <tr>
-            <th>姓名</th><th>电话</th><th>课程</th><th>班级</th>
-            <th>课时</th><th>创建时间</th><th>操作</th>
+            <th>编号</th><th>姓名</th><th>电话</th><th>课程</th><th>班级</th><th>操作</th>
           </tr>
         </thead>
         <tbody>
           ${filtered.map(s => {
-            const hoursClass = s.hours <= 2 ? 'hours-low' : 'hours-ok';
+            const totalHours = (s.courses || []).reduce((sum, c) => sum + c.hours, 0);
             return `
               <tr>
+                <td style="color:var(--text-muted);font-size:.8rem">${escHtml(s.studentNo || '')}</td>
                 <td>
                 <strong>${escHtml(s.name)}</strong>
                 ${s.note ? `<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px">${escHtml(s.note)}</div>` : ''}
               </td>
                 <td>${escHtml(s.phone) || '—'}</td>
-                <td><span class="badge ${s.course === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(s.course)}</span></td>
+                <td>
+                  ${(s.courses || []).map(c => `<span class="badge ${c.type === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(c.type)} ${c.hours}课时</span>`).join(' ') || '<span style="color:var(--text-muted)">—</span>'}
+                </td>
                 <td><span class="badge badge-green">${escHtml(s.className)}</span></td>
-                <td class="${hoursClass}"><strong>${s.hours}</strong> 课时</td>
-                <td>${formatDateTime(s.createdAt)}</td>
                 <td>
                   <div class="action-btns">
-                    <button class="btn btn-success btn-sm" onclick="openSigninModal('${s.id}')" ${s.hours <= 0 ? 'disabled' : ''}>✍️ 签到</button>
+                    <button class="btn btn-success btn-sm" onclick="openSigninModal('${s.id}')" ${totalHours <= 0 ? 'disabled' : ''}>✍️ 签到</button>
                     <button class="btn btn-outline btn-sm" onclick="openEditStudentModal('${s.id}')">✏️ 编辑</button>
                     <button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.id}')">🗑️ 删除</button>
                   </div>
@@ -1034,11 +1066,12 @@ function renderArchive() {
     <div class="history-student-card" style="margin-bottom:8px">
       <div class="history-card-header" style="cursor:default">
         <div class="history-card-info">
+          <span style="color:var(--text-muted);font-size:.75rem">${escHtml(s.studentNo || '')}</span>
           <strong>${escHtml(s.name)}</strong>
           <span class="badge badge-green">${escHtml(s.className)}</span>
-          <span class="badge ${s.course === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(s.course)}</span>
+          ${(s.courses || []).map(c => `<span class="badge ${c.type === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(c.type)} ${c.hours}课时</span>`).join(' ')}
         </div>
-        <div class="history-card-meta">${s.hours} 课时 · ${formatDate(s.createdAt)}</div>
+        <div class="history-card-meta">${formatDate(s.createdAt)}</div>
       </div>
     </div>
   `).join('');
@@ -1057,9 +1090,9 @@ function openAddStudentModal() {
   document.getElementById('editStudentId').value = '';
   document.getElementById('studentName').value = '';
   document.getElementById('studentPhone').value = '';
-  document.getElementById('studentCourse').value = '';
+  document.getElementById('studentNormalHours').value = '0';
+  document.getElementById('studentTrainingHours').value = '0';
   document.getElementById('studentClass').value = '';
-  document.getElementById('studentHours').value = '0';
   document.getElementById('studentNote').value = '';
   populateFilters();
   openModal('studentModal');
@@ -1072,9 +1105,11 @@ function openEditStudentModal(id) {
   document.getElementById('editStudentId').value = s.id;
   document.getElementById('studentName').value = s.name;
   document.getElementById('studentPhone').value = s.phone || '';
-  document.getElementById('studentCourse').value = s.course;
+  const normal = s.courses.find(c => c.type === '常规课');
+  const training = s.courses.find(c => c.type === '集训课');
+  document.getElementById('studentNormalHours').value = normal ? normal.hours : '0';
+  document.getElementById('studentTrainingHours').value = training ? training.hours : '0';
   document.getElementById('studentClass').value = s.className;
-  document.getElementById('studentHours').value = s.hours;
   document.getElementById('studentNote').value = s.note || '';
   populateFilters();
   openModal('studentModal');
@@ -1084,36 +1119,40 @@ function saveStudent() {
   const editId = document.getElementById('editStudentId').value;
   const name = document.getElementById('studentName').value.trim();
   const phone = document.getElementById('studentPhone').value.trim();
-  const course = document.getElementById('studentCourse').value;
   const className = document.getElementById('studentClass').value;
-  const hours = parseInt(document.getElementById('studentHours').value) || 0;
+  const normalHours = parseInt(document.getElementById('studentNormalHours').value) || 0;
+  const trainingHours = parseInt(document.getElementById('studentTrainingHours').value) || 0;
   const note = document.getElementById('studentNote').value.trim();
 
   if (!name) { showToast('请输入学员姓名', 'error'); return; }
-  if (!course) { showToast('请选择课程类别', 'error'); return; }
   if (!className) { showToast('请输入班级名称', 'error'); return; }
+  if (normalHours <= 0 && trainingHours <= 0) { showToast('请至少填写一门课的课时', 'error'); return; }
+
+  const courses = [];
+  if (normalHours > 0) courses.push({ type: '常规课', hours: normalHours });
+  if (trainingHours > 0) courses.push({ type: '集训课', hours: trainingHours });
 
   if (editId) {
     const idx = students.findIndex(s => s.id === editId);
     if (idx !== -1) {
       students[idx].name = name;
       students[idx].phone = phone;
-      students[idx].course = course;
       students[idx].className = className;
-      students[idx].hours = hours;
+      students[idx].courses = courses;
       students[idx].note = note;
       showToast('学员信息已更新 ✅', 'success');
     }
   } else {
+    const createdAt = new Date().toISOString();
     const newStudent = {
       id: generateId(),
+      studentNo: generateStudentNo(createdAt),
       name,
       phone,
-      course,
       className,
-      hours,
+      courses,
       note,
-      createdAt: new Date().toISOString(),
+      createdAt,
     };
     students.push(newStudent);
     showToast('学员添加成功 🎉', 'success');
@@ -1172,13 +1211,25 @@ function switchHistoryView(view) {
 function openSigninModal(id) {
   const s = students.find(st => st.id === id);
   if (!s) return;
-  if (s.hours <= 0) { showToast('该学员课时已用完，无法签到', 'error'); return; }
+
+  // Courses with remaining hours
+  const availableCourses = (s.courses || []).filter(c => c.hours > 0);
+  if (availableCourses.length === 0) { showToast('该学员课时已用完，无法签到', 'error'); return; }
 
   signinTargetId = id;
   document.getElementById('signinStudentName').textContent = s.name;
-  document.getElementById('signinRemainHours').textContent = s.hours;
   document.getElementById('signinStudentClass').textContent = s.className;
   document.getElementById('signinNote').value = '';
+
+  const select = document.getElementById('signinCourseSelect');
+  if (availableCourses.length === 1) {
+    select.innerHTML = `<option value="${availableCourses[0].type}">${availableCourses[0].type}（剩余 ${availableCourses[0].hours}）</option>`;
+    select.disabled = true;
+  } else {
+    select.innerHTML = '<option value="">请选择课程</option>' + availableCourses.map(c => `<option value="${c.type}">${c.type}（剩余 ${c.hours}）</option>`).join('');
+    select.disabled = false;
+  }
+  document.getElementById('signinRemainHours').textContent = availableCourses.map(c => `${c.type}${c.hours}`).join(' / ');
   openModal('signinModal');
 }
 
@@ -1186,18 +1237,23 @@ function confirmSignin() {
   if (!signinTargetId) return;
   const s = students.find(st => st.id === signinTargetId);
   if (!s) return;
-  if (s.hours <= 0) { showToast('课时不足，无法签到', 'error'); return; }
 
-  s.hours -= 1;
+  const courseType = document.getElementById('signinCourseSelect').value;
+  if (!courseType) { showToast('请选择课程', 'error'); return; }
+
+  const course = (s.courses || []).find(c => c.type === courseType);
+  if (!course || course.hours <= 0) { showToast('课时不足，无法签到', 'error'); return; }
+
+  course.hours -= 1;
   const note = document.getElementById('signinNote').value.trim();
   const record = {
     id: generateId(),
     studentId: s.id,
     studentName: s.name,
     className: s.className,
-    course: s.course,
+    course: courseType,
     time: new Date().toISOString(),
-    remainHours: s.hours,
+    remainHours: course.hours,
     note,
   };
   history.push(record);
@@ -1208,7 +1264,7 @@ function confirmSignin() {
   signinTargetId = null;
   renderStudents();
   renderHistory();
-  showToast(`签到成功！「${s.name}」剩余 ${s.hours} 课时 ✍️`, 'success');
+  showToast(`签到成功！「${s.name}」${courseType} 剩余 ${course.hours} 课时 ✍️`, 'success');
 }
 
 // ==================== Student Profile ====================
@@ -1315,11 +1371,12 @@ function renderBatchStudentList() {
     container.innerHTML = '';
     return;
   }
-
-  let classStudents = students.filter(s => s.className === className);
-  if (courseFilter) {
-    classStudents = classStudents.filter(s => s.course === courseFilter);
+  if (!courseFilter) {
+    container.innerHTML = '<div class="empty-state" style="padding:20px"><p>请选择课程类别</p></div>';
+    return;
   }
+
+  let classStudents = students.filter(s => s.className === className && (s.courses || []).some(c => c.type === courseFilter));
 
   if (classStudents.length === 0) {
     container.innerHTML = '<div class="empty-state" style="padding:30px"><p>该班级暂无学员</p></div>';
@@ -1333,15 +1390,18 @@ function renderBatchStudentList() {
       </thead>
       <tbody>
         ${classStudents.map(s => {
-          const noHours = s.hours <= 0;
+          // If a course filter is set, show only that course's hours
+          const targetCourse = courseFilter ? (s.courses || []).find(c => c.type === courseFilter) : null;
+          const hours = targetCourse ? targetCourse.hours : (s.courses || []).reduce((sum, c) => sum + c.hours, 0);
+          const noHours = hours <= 0;
           return `
             <tr>
               <td>
                 <input type="checkbox" class="batch-check" value="${s.id}" ${noHours ? 'disabled' : 'checked'} style="width:18px;height:18px;cursor:pointer">
               </td>
               <td><strong>${escHtml(s.name)}</strong></td>
-              <td><span class="badge ${s.course === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(s.course)}</span></td>
-              <td class="${s.hours <= 2 ? 'hours-low' : 'hours-ok'}"><strong>${s.hours}</strong></td>
+              <td>${targetCourse ? `<span class="badge ${targetCourse.type === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(targetCourse.type)}</span>` : (s.courses || []).map(c => `<span class="badge ${c.type === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(c.type)}</span>`).join(' ')}</td>
+              <td class="${hours <= 2 ? 'hours-low' : 'hours-ok'}"><strong>${hours}</strong></td>
               <td>${noHours ? '<span class="badge badge-orange">😴 课时不足</span>' : '<span class="badge badge-green">✅ 可签到</span>'}</td>
             </tr>`;
         }).join('')}
@@ -1355,7 +1415,9 @@ function renderBatchStudentList() {
 
 function confirmBatchSignin() {
   const className = document.getElementById('batchClassSelect').value;
+  const courseFilter = document.getElementById('batchCourseSelect').value;
   if (!className) { showToast('请选择班级', 'error'); return; }
+  if (!courseFilter) { showToast('请选择课程类别', 'error'); return; }
 
   const checkboxes = document.querySelectorAll('.batch-check:checked');
   if (checkboxes.length === 0) { showToast('没有可签到的学员', 'error'); return; }
@@ -1365,9 +1427,12 @@ function confirmBatchSignin() {
 
   checkboxes.forEach(cb => {
     const s = students.find(st => st.id === cb.value);
-    if (!s || s.hours <= 0) return;
+    if (!s) return;
 
-    s.hours -= 1;
+    const course = (s.courses || []).find(c => c.type === courseFilter);
+    if (!course || course.hours <= 0) return;
+
+    course.hours -= 1;
     signedCount++;
 
     history.push({
@@ -1375,9 +1440,9 @@ function confirmBatchSignin() {
       studentId: s.id,
       studentName: s.name,
       className: s.className,
-      course: s.course,
+      course: courseFilter,
       time: new Date().toISOString(),
-      remainHours: s.hours,
+      remainHours: course.hours,
       note: '',
     });
   });
