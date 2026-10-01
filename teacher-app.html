@@ -160,12 +160,6 @@ tbody tr:last-child td { border-bottom: none; }
 .hours-ok { color: var(--text); }
 
 .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-.student-card-list { display: none; padding: 12px; gap: 10px; }
-.student-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--surface); }
-.student-card-top { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; }
-.student-card-meta { font-size:.8rem; color:var(--text-muted); margin-top:4px; }
-.student-card-courses { display:flex; flex-wrap:wrap; gap:5px; margin:10px 0; }
-.student-pagination { display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:14px 16px; border-top:1px solid var(--border); font-size:.85rem; color:var(--text-muted); flex-wrap:wrap; }
 
 /* ===== Modal ===== */
 .modal-overlay {
@@ -302,10 +296,6 @@ tbody tr:last-child td { border-bottom: none; }
   .stat-value { font-size: 1.2rem; }
   .stat-label { font-size: .7rem; }
   .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .student-desktop-table { display:none; }
-  .student-card-list { display:grid; }
-  .student-card .action-btns { display:grid; grid-template-columns:repeat(3, 1fr); }
-  .student-card .btn-sm { width:100%; justify-content:center; min-height:36px; }
   table { font-size: .75rem; white-space: nowrap; min-width: 650px; }
   thead th, tbody td { padding: 8px 6px; }
   .action-btns { flex-direction: row; flex-wrap: wrap; }
@@ -353,10 +343,6 @@ tbody tr:last-child td { border-bottom: none; }
       <div class="stat-icon red">📌</div>
       <div><div class="stat-value" id="statClasses">0</div><div class="stat-label">班级数量</div></div>
     </div>
-    <button class="stat-card" type="button" onclick="toggleLowHoursFilter()" style="border:none;cursor:pointer;text-align:left">
-      <div class="stat-icon orange">⚠️</div>
-      <div><div class="stat-value" id="statLowHours">0</div><div class="stat-label">低课时预警（≤2）</div></div>
-    </button>
   </div>
 
   <!-- ===== Tabs ===== -->
@@ -370,21 +356,14 @@ tbody tr:last-child td { border-bottom: none; }
   <div class="toolbar" id="toolbarStudents">
     <div class="search-box">
       <span class="search-icon">🔍</span>
-      <input type="text" id="searchInput" placeholder="搜索姓名、电话、课程…" oninput="onStudentListChange()">
+      <input type="text" id="searchInput" placeholder="搜索姓名、电话、课程…" oninput="renderStudents()">
     </div>
-    <select class="filter-select" id="filterClass" onchange="onStudentListChange()">
+    <select class="filter-select" id="filterClass" onchange="renderStudents()">
       <option value="">📂 全部班级</option>
     </select>
-    <select class="filter-select" id="filterCourse" onchange="onStudentListChange()">
+    <select class="filter-select" id="filterCourse" onchange="renderStudents()">
       <option value="">📖 全部课程类别</option>
     </select>
-    <select class="filter-select" id="studentSort" onchange="onStudentListChange()">
-      <option value="created-desc">🕒 最近添加</option>
-      <option value="name-asc">🔤 姓名</option>
-      <option value="hours-asc">⏳ 剩余课时</option>
-      <option value="class-asc">🏫 班级</option>
-    </select>
-    <button class="btn btn-warning" id="lowHoursFilterBtn" onclick="toggleLowHoursFilter()" style="display:none">⚠️ 仅低课时 · 清除</button>
     <button class="btn btn-success" onclick="openBatchSigninModal()">🚀 一键签到</button>
   </div>
 
@@ -553,28 +532,6 @@ tbody tr:last-child td { border-bottom: none; }
   </div>
 </div>
 
-<!-- ===== Batch Sign-in Confirmation Modal ===== -->
-<div class="modal-overlay" id="batchConfirmModal">
-  <div class="modal" style="max-width:460px">
-    <div class="modal-header"><h2>✅ 确认批量签到</h2><button class="modal-close" onclick="closeModal('batchConfirmModal')">✕</button></div>
-    <div class="modal-body">
-      <div class="signin-student-info"><div class="name" id="batchConfirmTitle">—</div><div class="meta" id="batchConfirmMeta">—</div></div>
-      <div class="signin-hint">确认后将按当前时间记录签到并扣除对应课时。</div>
-      <div id="batchConfirmNames" style="font-size:.85rem;line-height:1.8;max-height:180px;overflow-y:auto"></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('batchConfirmModal')">返回修改</button><button class="btn btn-success" onclick="commitBatchSignin()">✅ 确认签到</button></div>
-  </div>
-</div>
-
-<!-- ===== Delete Attendance Record Modal ===== -->
-<div class="modal-overlay" id="deleteHistoryModal">
-  <div class="modal" style="max-width:420px">
-    <div class="modal-header"><h2>🗑️ 删除签到记录</h2><button class="modal-close" onclick="closeModal('deleteHistoryModal')">✕</button></div>
-    <div class="modal-body"><div class="signin-hint">请选择是否将该次签到扣除的 1 课时加回。此选择不会影响其他签到记录。</div><div id="deleteHistoryInfo" style="font-size:.9rem;color:var(--text-muted)"></div></div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('deleteHistoryModal')">取消</button><button class="btn btn-outline" onclick="confirmDeleteHistoryRecord(false)">只删记录</button><button class="btn btn-danger" onclick="confirmDeleteHistoryRecord(true)">删除并加回 1 课时</button></div>
-  </div>
-</div>
-
 <!-- ===== Student Profile Modal ===== -->
 <div class="modal-overlay" id="profileModal">
   <div class="modal" style="max-width: 520px;">
@@ -652,8 +609,8 @@ tbody tr:last-child td { border-bottom: none; }
 // ==================== 数据存储 ====================
 // Template uses test keys — exported files use production keys to avoid conflict
 const STORAGE_KEYS = {
-  students: 'teacher_app_students',
-  history: 'teacher_app_history',
+  students: 'teacher_app_test_students',
+  history: 'teacher_app_test_history',
 };
 
 const DEFAULT_COURSES = ['常规课', '集训课'];
@@ -749,106 +706,6 @@ function showToast(msg, type = 'info') {
   setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity .3s'; setTimeout(() => toast.remove(), 300); }, 2500);
 }
 
-/* TESTABLE_LOGIC_START */
-function getStudentTotalHours(student) {
-  return (student.courses || []).reduce((total, course) => total + (Number(course.hours) || 0), 0);
-}
-
-function isLowHoursStudent(student) {
-  return (student.courses || []).some(course => (Number(course.hours) || 0) <= 2);
-}
-
-function normalizeClassName(value) {
-  return String(value || '').trim();
-}
-
-function isValidCnMobile(value) {
-  return /^1[3-9]\d{9}$/.test(value);
-}
-
-function paginate(items, requestedPage, pageSize) {
-  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
-  const page = Math.min(Math.max(1, requestedPage), totalPages);
-  return {
-    items: items.slice((page - 1) * pageSize, page * pageSize),
-    page,
-    totalPages,
-  };
-}
-
-function removeHistoryRecord(state, recordId, restoreHours) {
-  const record = (state.history || []).find(item => item.id === recordId);
-  const nextHistory = (state.history || []).filter(item => item.id !== recordId);
-  const nextStudents = (state.students || []).map(student => ({
-    ...student,
-    courses: (student.courses || []).map(course => ({ ...course })),
-  }));
-  let restored = false;
-
-  if (record && restoreHours) {
-    const student = nextStudents.find(item => item.id === record.studentId);
-    const course = student && (student.courses || []).find(item => item.type === record.course);
-    if (course) {
-      course.hours = (Number(course.hours) || 0) + 1;
-      restored = true;
-    }
-  }
-
-  return { state: { students: nextStudents, history: nextHistory }, restored };
-}
-
-function applyBatchSignin(state, studentIds, courseType, time, makeId = () => `batch-${Date.now()}`) {
-  const selectedIds = new Set(studentIds);
-  const nextStudents = (state.students || []).map(student => ({
-    ...student,
-    courses: (student.courses || []).map(course => ({ ...course })),
-  }));
-  const nextHistory = [...(state.history || [])];
-  let signedCount = 0;
-
-  nextStudents.forEach(student => {
-    if (!selectedIds.has(student.id)) return;
-    const course = (student.courses || []).find(item => item.type === courseType);
-    if (!course || course.hours <= 0) return;
-    course.hours -= 1;
-    signedCount++;
-    nextHistory.push({
-      id: makeId(),
-      studentId: student.id,
-      studentName: student.name,
-      className: student.className,
-      course: courseType,
-      time,
-      remainHours: course.hours,
-      note: '',
-    });
-  });
-
-  return { students: nextStudents, history: nextHistory, signedCount };
-}
-
-function filterStudents(items, options) {
-  const { search = '', className = '', course = '', lowOnly = false, sort = 'created-desc' } = options;
-  const needle = String(search).toLowerCase().trim();
-  const result = (items || []).filter(student => {
-    const courses = student.courses || [];
-    const matchesSearch = !needle || [student.name, student.phone, student.studentNo, student.className, ...courses.map(item => item.type)]
-      .some(value => String(value || '').toLowerCase().includes(needle));
-    return matchesSearch
-      && (!className || student.className === className)
-      && (!course || courses.some(item => item.type === course))
-      && (!lowOnly || isLowHoursStudent(student));
-  });
-
-  return result.sort((left, right) => {
-    if (sort === 'name-asc') return String(left.name || '').localeCompare(String(right.name || ''), 'zh-CN');
-    if (sort === 'hours-asc') return getStudentTotalHours(left) - getStudentTotalHours(right);
-    if (sort === 'class-asc') return String(left.className || '').localeCompare(String(right.className || ''), 'zh-CN');
-    return String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
-  });
-}
-/* TESTABLE_LOGIC_END */
-
 // ==================== Modal helpers ====================
 function openModal(id) { document.getElementById(id).classList.add('active'); }
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -913,53 +770,59 @@ function populateFilters() {
 }
 
 // ==================== Render Student Table ====================
-const studentListState = { page: 1, pageSize: 10, lowOnly: false };
-
-function onStudentListChange() {
-  studentListState.page = 1;
-  renderStudents();
-}
-
-function toggleLowHoursFilter() {
-  studentListState.lowOnly = !studentListState.lowOnly;
-  studentListState.page = 1;
-  renderStudents();
-}
-
-function renderStudentCard(s) {
-  const totalHours = getStudentTotalHours(s);
-  const courses = (s.courses || []).map(c => `<span class="badge ${c.type === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(c.type)} ${c.hours}课时</span>`).join(' ');
-  return `<article class="student-card"><div class="student-card-top"><div><strong>${escHtml(s.name)}</strong><div class="student-card-meta">${escHtml(s.studentNo || '未编号')} · ${escHtml(s.className)}</div></div><span class="badge badge-green">${totalHours} 课时</span></div><div class="student-card-courses">${courses || '—'}</div><div class="action-btns"><button class="btn btn-success btn-sm" onclick="openSigninModal('${s.id}')" ${totalHours <= 0 ? 'disabled' : ''}>✍️ 签到</button><button class="btn btn-outline btn-sm" onclick="openEditStudentModal('${s.id}')">✏️ 编辑</button><button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.id}')">🗑️ 删除</button></div></article>`;
-}
-
 function renderStudents() {
   const wrapper = document.getElementById('studentsTableWrapper');
-  const filtered = filterStudents(students, {
-    search: document.getElementById('searchInput').value,
-    className: document.getElementById('filterClass').value,
-    course: document.getElementById('filterCourse').value,
-    lowOnly: studentListState.lowOnly,
-    sort: document.getElementById('studentSort').value,
+  const search = document.getElementById('searchInput').value.toLowerCase().trim();
+  const filterClass = document.getElementById('filterClass').value;
+  const filterCourse = document.getElementById('filterCourse').value;
+
+  let filtered = students.filter(s => {
+    const courseNames = (s.courses || []).map(c => c.type);
+    const matchSearch = !search || s.name.toLowerCase().includes(search) || (s.phone || '').includes(search) || (s.studentNo || '').includes(search) || s.className.toLowerCase().includes(search) || courseNames.join(' ').includes(search);
+    const matchClass = !filterClass || s.className === filterClass;
+    const matchCourse = !filterCourse || courseNames.includes(filterCourse);
+    return matchSearch && matchClass && matchCourse;
   });
-  const pageInfo = paginate(filtered, studentListState.page, studentListState.pageSize);
-  studentListState.page = pageInfo.page;
-  document.getElementById('lowHoursFilterBtn').style.display = studentListState.lowOnly ? '' : 'none';
 
   if (filtered.length === 0) {
     wrapper.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>${students.length === 0 ? '还没有添加学员' : '没有匹配的学员'}</p>${students.length === 0 ? '<button class="btn btn-primary" style="margin-top:12px" onclick="openAddStudentModal()">＋ 添加第一个学员</button>' : ''}</div>`;
   } else {
-    const rows = pageInfo.items.map(s => {
-      const totalHours = getStudentTotalHours(s);
-      return `<tr><td style="color:var(--text-muted);font-size:.8rem">${escHtml(s.studentNo || '')}</td><td><strong>${escHtml(s.name)}</strong>${s.note ? `<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px">${escHtml(s.note)}</div>` : ''}</td><td>${escHtml(s.phone) || '—'}</td><td>${(s.courses || []).map(c => `<span class="badge ${c.type === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(c.type)} ${c.hours}课时</span>`).join(' ') || '—'}</td><td><span class="badge badge-green">${escHtml(s.className)}</span></td><td><div class="action-btns"><button class="btn btn-success btn-sm" onclick="openSigninModal('${s.id}')" ${totalHours <= 0 ? 'disabled' : ''}>✍️ 签到</button><button class="btn btn-outline btn-sm" onclick="openEditStudentModal('${s.id}')">✏️ 编辑</button><button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.id}')">🗑️ 删除</button></div></td></tr>`;
-    }).join('');
-    wrapper.innerHTML = `<table class="student-desktop-table"><thead><tr><th>编号</th><th>姓名</th><th>电话</th><th>课程</th><th>班级</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table><div class="student-card-list">${pageInfo.items.map(renderStudentCard).join('')}</div><div class="student-pagination"><span>共 ${filtered.length} 人 · 第 ${pageInfo.page} / ${pageInfo.totalPages} 页</span><button class="btn btn-outline btn-sm" onclick="changeStudentPage(-1)" ${pageInfo.page === 1 ? 'disabled' : ''}>上一页</button><button class="btn btn-outline btn-sm" onclick="changeStudentPage(1)" ${pageInfo.page === pageInfo.totalPages ? 'disabled' : ''}>下一页</button></div>`;
+    wrapper.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>编号</th><th>姓名</th><th>电话</th><th>课程</th><th>班级</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map(s => {
+            const totalHours = (s.courses || []).reduce((sum, c) => sum + c.hours, 0);
+            return `
+              <tr>
+                <td style="color:var(--text-muted);font-size:.8rem">${escHtml(s.studentNo || '')}</td>
+                <td>
+                <strong>${escHtml(s.name)}</strong>
+                ${s.note ? `<div style="font-size:.78rem;color:var(--text-muted);margin-top:2px">${escHtml(s.note)}</div>` : ''}
+              </td>
+                <td>${escHtml(s.phone) || '—'}</td>
+                <td>
+                  ${(s.courses || []).map(c => `<span class="badge ${c.type === '常规课' ? 'badge-blue' : 'badge-orange'}">${escHtml(c.type)} ${c.hours}课时</span>`).join(' ') || '<span style="color:var(--text-muted)">—</span>'}
+                </td>
+                <td><span class="badge badge-green">${escHtml(s.className)}</span></td>
+                <td>
+                  <div class="action-btns">
+                    <button class="btn btn-success btn-sm" onclick="openSigninModal('${s.id}')" ${totalHours <= 0 ? 'disabled' : ''}>✍️ 签到</button>
+                    <button class="btn btn-outline btn-sm" onclick="openEditStudentModal('${s.id}')">✏️ 编辑</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.id}')">🗑️ 删除</button>
+                  </div>
+                </td>
+              </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
   }
-  updateStats();
-}
 
-function changeStudentPage(delta) {
-  studentListState.page += delta;
-  renderStudents();
+  updateStats();
 }
 
 // ==================== Render History Table ====================
@@ -1219,7 +1082,6 @@ function updateStats() {
   document.getElementById('statTotal').textContent = students.length;
   const classes = new Set(students.map(s => s.className).filter(Boolean));
   document.getElementById('statClasses').textContent = classes.size;
-  document.getElementById('statLowHours').textContent = students.filter(isLowHoursStudent).length;
 }
 
 // ==================== Student CRUD ====================
@@ -1257,18 +1119,14 @@ function saveStudent() {
   const editId = document.getElementById('editStudentId').value;
   const name = document.getElementById('studentName').value.trim();
   const phone = document.getElementById('studentPhone').value.trim();
-  const className = normalizeClassName(document.getElementById('studentClass').value);
+  const className = document.getElementById('studentClass').value;
   const normalHours = parseInt(document.getElementById('studentNormalHours').value) || 0;
   const trainingHours = parseInt(document.getElementById('studentTrainingHours').value) || 0;
   const note = document.getElementById('studentNote').value.trim();
 
   if (!name) { showToast('请输入学员姓名', 'error'); return; }
   if (!className) { showToast('请输入班级名称', 'error'); return; }
-  if (phone && !isValidCnMobile(phone)) { showToast('请输入正确的 11 位手机号', 'error'); return; }
   if (normalHours <= 0 && trainingHours <= 0) { showToast('请至少填写一门课的课时', 'error'); return; }
-
-  const duplicate = phone && students.find(s => s.id !== editId && s.name.trim() === name && s.phone === phone);
-  if (duplicate && !confirm(`已存在同名同手机号的学员「${duplicate.name}」，仍要保存吗？`)) return;
 
   const courses = [];
   if (normalHours > 0) courses.push({ type: '常规课', hours: normalHours });
@@ -1555,43 +1413,51 @@ function renderBatchStudentList() {
     </div>`;
 }
 
-let pendingBatchSignin = null;
-let pendingDeleteHistoryId = null;
-
 function confirmBatchSignin() {
   const className = document.getElementById('batchClassSelect').value;
   const courseFilter = document.getElementById('batchCourseSelect').value;
   if (!className) { showToast('请选择班级', 'error'); return; }
   if (!courseFilter) { showToast('请选择课程类别', 'error'); return; }
 
-  const checkedIds = [...document.querySelectorAll('.batch-check:checked')].map(cb => cb.value);
+  const checkboxes = document.querySelectorAll('.batch-check:checked');
+  if (checkboxes.length === 0) { showToast('没有可签到的学员', 'error'); return; }
+
+  let signedCount = 0;
+  let absentCount = 0;
+
+  checkboxes.forEach(cb => {
+    const s = students.find(st => st.id === cb.value);
+    if (!s) return;
+
+    const course = (s.courses || []).find(c => c.type === courseFilter);
+    if (!course || course.hours <= 0) return;
+
+    course.hours -= 1;
+    signedCount++;
+
+    history.push({
+      id: generateId(),
+      studentId: s.id,
+      studentName: s.name,
+      className: s.className,
+      course: courseFilter,
+      time: new Date().toISOString(),
+      remainHours: course.hours,
+      note: '',
+    });
+  });
+
+  // Count absent students (unchecked, who had hours)
   const allChecks = document.querySelectorAll('.batch-check:not([disabled])');
-  if (checkedIds.length === 0) { showToast('没有可签到的学员', 'error'); return; }
-
-  pendingBatchSignin = { className, courseFilter, checkedIds, absentCount: allChecks.length - checkedIds.length };
-  document.getElementById('batchConfirmTitle').textContent = `${className} · ${courseFilter}`;
-  document.getElementById('batchConfirmMeta').textContent = `签到 ${checkedIds.length} 人 · 请假 ${pendingBatchSignin.absentCount} 人`;
-  document.getElementById('batchConfirmNames').textContent = `签到名单：${checkedIds.map(id => students.find(s => s.id === id)?.name || '未知学员').join('、')}`;
-  openModal('batchConfirmModal');
-}
-
-function commitBatchSignin() {
-  if (!pendingBatchSignin) return;
-  const { checkedIds, courseFilter, absentCount } = pendingBatchSignin;
-  const result = applyBatchSignin({ students, history }, checkedIds, courseFilter, new Date().toISOString(), generateId);
-  students = result.students;
-  history = result.history;
+  absentCount = allChecks.length - checkboxes.length;
 
   persistStudents();
   persistHistory();
-  pendingBatchSignin = null;
-  closeModal('batchConfirmModal');
   closeModal('batchSigninModal');
   renderStudents();
   renderHistory();
-  renderArchive();
 
-  let msg = `批量签到完成！签到 ${result.signedCount} 人`;
+  let msg = `批量签到完成！签到 ${signedCount} 人`;
   if (absentCount > 0) msg += `，请假 ${absentCount} 人`;
   showToast(msg, 'success');
 }
@@ -1606,26 +1472,13 @@ function clearHistory() {
 }
 
 function deleteHistoryRecord(id) {
-  const record = history.find(h => h.id === id);
-  if (!record) return;
-  pendingDeleteHistoryId = id;
-  document.getElementById('deleteHistoryInfo').textContent = `${record.studentName} · ${record.course} · ${formatDateTime(record.time)}`;
-  openModal('deleteHistoryModal');
-}
-
-function confirmDeleteHistoryRecord(restoreHours) {
-  if (!pendingDeleteHistoryId) return;
-  const result = removeHistoryRecord({ students, history }, pendingDeleteHistoryId, restoreHours);
-  students = result.state.students;
-  history = result.state.history;
-  pendingDeleteHistoryId = null;
-  persistStudents();
+  const idx = history.findIndex(h => h.id === id);
+  if (idx === -1) return;
+  if (!confirm('确定要删除这条签到记录吗？')) return;
+  history.splice(idx, 1);
   persistHistory();
-  closeModal('deleteHistoryModal');
-  renderStudents();
   renderHistory();
-  renderArchive();
-  showToast(restoreHours ? (result.restored ? '已删除记录并加回 1 课时' : '已删除记录；未能定位课程，未回补课时') : '已删除记录，未回补课时', 'info');
+  showToast('签到记录已删除', 'info');
 }
 
 // ==================== Utilities ====================
@@ -1681,8 +1534,8 @@ function exportData() {
     '$1' + json + '$2'
   );
   // Swap test storage keys for production keys in the exported file
-  html = html.replace(/teacher_app_students/g, 'teacher_app_students');
-  html = html.replace(/teacher_app_history/g, 'teacher_app_history');
+  html = html.replace(/teacher_app_test_students/g, 'teacher_app_students');
+  html = html.replace(/teacher_app_test_history/g, 'teacher_app_history');
 
   const blob = new Blob(['<!DOCTYPE html>\n', html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
