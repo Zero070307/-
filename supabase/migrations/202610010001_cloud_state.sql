@@ -1,3 +1,5 @@
+begin;
+
 create extension if not exists pgcrypto;
 
 create table public.students (
@@ -75,8 +77,8 @@ stable
 set search_path = public
 as $$
   select jsonb_build_object(
-    'students', coalesce((
-      select jsonb_agg(jsonb_build_object(
+    'students', (
+      select coalesce(jsonb_agg(jsonb_build_object(
         'id', s.id,
         'studentNo', s.student_no,
         'name', s.name,
@@ -92,8 +94,8 @@ as $$
       ) order by s.created_at), '[]'::jsonb)
       from public.students s
     ),
-    'history', coalesce((
-      select jsonb_agg(jsonb_build_object(
+    'history', (
+      select coalesce(jsonb_agg(jsonb_build_object(
         'id', h.id,
         'studentId', h.student_id,
         'studentName', h.student_name,
@@ -120,8 +122,8 @@ begin
     raise exception 'State must include students and history arrays';
   end if;
 
-  delete from public.attendance_records;
-  delete from public.students;
+  delete from public.attendance_records where true;
+  delete from public.students where true;
 
   insert into public.students (id, student_no, name, phone, class_name, note, archived, created_at)
   select
@@ -241,3 +243,5 @@ grant execute on function public.get_current_state() to service_role;
 grant execute on function public.save_state_with_snapshot(jsonb, text, bigint) to service_role;
 grant execute on function public.restore_snapshot_with_snapshot(uuid) to service_role;
 grant execute on function public.bootstrap_state_once(jsonb) to service_role;
+
+commit;

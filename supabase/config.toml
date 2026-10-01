@@ -1,0 +1,4 @@
+[functions.api]
+# The API validates its own password and opaque 30-day session token.
+# Supabase's JWT gateway check must not reject those custom credentials first.
+verify_jwt = false
