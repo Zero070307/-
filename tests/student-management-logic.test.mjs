@@ -20,9 +20,16 @@ function loadLogic() {
 const logic = loadLogic();
 
 {
+  const readme = fs.readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+  assert.doesNotMatch(readme, /ADMIN_PASSCODE=/, 'README does not include a deployable passcode secret');
+
   for (const fileName of ['index.html', 'teacher-app.html']) {
     const html = fs.readFileSync(new URL(`../${fileName}`, import.meta.url), 'utf8');
     assert.equal(embeddedData(html, fileName), '', `${fileName} has no built-in student or attendance data`);
+    assert.match(html, /数据恢复/, `${fileName} includes the recovery entry point`);
+    assert.match(html, /cloudApi\.listSnapshots/, `${fileName} loads recovery snapshots from the cloud`);
+    assert.match(html, /cloudApi\.getState/, `${fileName} loads business data from the cloud`);
+    assert.doesNotMatch(html, /localStorage\.(getItem|setItem).*students|teacher_app_students|teacher_app_history/, `${fileName} does not use browser storage for business data`);
   }
 }
 

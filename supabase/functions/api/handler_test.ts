@@ -24,6 +24,20 @@ Deno.test("state route rejects a request without a bearer token", async () => {
   assertEquals(response.status, 401);
 });
 
+Deno.test("Supabase function prefix is removed before route matching", async () => {
+  const api = createApi({ store: createFakeStore(), now: () => now, adminUsername: "test-admin", adminPasscode: "1234" });
+  const login = await api(new Request("https://project.supabase.co/functions/v1/api/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ username: "test-admin", passcode: "1234" }),
+  }));
+  const { token } = await login.json();
+  const response = await api(new Request("https://project.supabase.co/functions/v1/api/state", {
+    headers: { authorization: `Bearer ${token}` },
+  }));
+  assertEquals(response.status, 500);
+});
+
 Deno.test("login returns a token that expires in 30 days after valid credentials", async () => {
   const api = createApi({ store: createFakeStore(), now: () => now, adminUsername: "test-admin", adminPasscode: "1234" });
   const response = await api(new Request("https://api.example/login", {

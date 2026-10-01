@@ -86,7 +86,9 @@ export function createApi(options: ApiOptions) {
       } : {} });
     }
 
-    const path = new URL(request.url).pathname.replace(/^\/api/, "") || "/";
+    const requestPath = new URL(request.url).pathname;
+    const apiIndex = requestPath.indexOf("/api");
+    const path = apiIndex >= 0 ? requestPath.slice(apiIndex + 4) || "/" : requestPath || "/";
     try {
       if (request.method === "POST" && path === "/login") {
         const body = await requestJson(request);

@@ -1,0 +1,5 @@
+embedded_data.json
+initial-data.private.json
+.env
+.env.*
+supabase/.temp/

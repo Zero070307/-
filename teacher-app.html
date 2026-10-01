@@ -322,11 +322,13 @@ tbody tr:last-child td { border-bottom: none; }
 
 <!-- ===== Header ===== -->
 <header class="app-header">
-  <h1>📚 教师学员管理系统</h1>
+  <div><h1>📚 教师学员管理系统</h1><div id="cloudStatus" style="font-size:.72rem;opacity:.86">等待登录</div></div>
   <div class="header-actions">
     <button class="btn btn-outline" onclick="exportData()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">📥 导出</button>
     <button class="btn btn-outline" onclick="document.getElementById('importFile').click()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">📤 导入</button>
-    <button class="btn btn-outline" onclick="resetApp()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">🔄 重置</button>
+    <button class="btn btn-outline" onclick="openRecoveryModal()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">🕘 数据恢复</button>
+    <button class="btn btn-outline" onclick="openModal('helpModal')" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">？说明</button>
+    <button class="btn btn-outline" onclick="logoutCloud()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)">退出</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
     <button class="btn btn-success" onclick="openAddStudentModal()">＋ 添加学员</button>
   </div>
@@ -583,20 +585,49 @@ tbody tr:last-child td { border-bottom: none; }
   </div>
 </div>
 
-<!-- ===== Password Lock ===== -->
+<!-- ===== Cloud Recovery ===== -->
+<div class="modal-overlay" id="recoveryModal">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header"><h2>🕘 数据恢复</h2><button class="modal-close" onclick="closeModal('recoveryModal')">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:.86rem;color:var(--text-muted);margin-bottom:14px">每次云端修改前都会自动保存一个恢复点，保留 30 天。恢复操作本身也会先保存当前状态。</p>
+      <div id="recoveryList" class="empty-state" style="padding:24px">正在读取恢复点…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Help ===== -->
+<div class="modal-overlay" id="helpModal">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header"><h2>📖 使用说明</h2><button class="modal-close" onclick="closeModal('helpModal')">✕</button></div>
+    <div class="modal-body" style="font-size:.9rem">
+      <p><strong>登录：</strong>输入管理员账号和四位口令。登录有效期为 30 天，换手机或清理浏览器后重新登录即可。</p>
+      <p style="margin-top:12px"><strong>日常使用：</strong>新增、编辑、签到、删除和导入都会自动同步到云端；页面顶部显示同步状态。</p>
+      <p style="margin-top:12px"><strong>导出：</strong>“导出”会下载 JSON 备份，建议在大量调整前保留一份。</p>
+      <p style="margin-top:12px"><strong>恢复：</strong>打开“数据恢复”，选择一次修改前的时间点并确认，即可恢复 30 天内的云端快照。</p>
+      <p style="margin-top:12px"><strong>忘记口令：</strong>联系项目所有者在 Supabase 后台重置；页面没有邮箱找回功能。</p>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal('helpModal')">知道了</button></div>
+  </div>
+</div>
+
+<!-- ===== Cloud Login ===== -->
 <div class="modal-overlay active" id="passwordOverlay" style="z-index:999; background:rgba(0,0,0,.7); backdrop-filter:blur(8px)">
   <div class="modal" style="max-width:360px; text-align:center">
     <div class="modal-header">
-      <h2>🔐 请输入密码</h2>
+      <h2>🔐 管理员登录</h2>
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <input type="password" id="passwordInput" placeholder="请输入访问密码" autocomplete="off" style="text-align:center;font-size:1.2rem;letter-spacing:4px">
+        <input type="text" id="usernameInput" placeholder="管理员账号" autocomplete="username" style="text-align:center">
       </div>
-      <div id="passwordError" style="color:var(--danger);font-size:.85rem;display:none;margin-top:-8px">密码错误，请重试</div>
+      <div class="form-group">
+        <input type="password" id="passwordInput" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="四位数字口令" autocomplete="current-password" style="text-align:center;font-size:1.2rem;letter-spacing:4px">
+      </div>
+      <div id="passwordError" style="color:var(--danger);font-size:.85rem;display:none;margin-top:-8px"></div>
     </div>
     <div class="modal-footer" style="justify-content:center">
-      <button class="btn btn-primary" onclick="checkPassword()" style="width:100%">🔓 解锁</button>
+      <button class="btn btn-primary" id="loginButton" onclick="checkPassword()" style="width:100%">🔓 登录并加载数据</button>
     </div>
   </div>
 </div>
@@ -606,48 +637,16 @@ tbody tr:last-child td { border-bottom: none; }
 
 <script type="application/json" id="embedded-data"></script>
 <script>
-// ==================== 数据存储 ====================
-// Template uses test keys — exported files use production keys to avoid conflict
-const STORAGE_KEYS = {
-  students: 'teacher_app_test_students',
-  history: 'teacher_app_test_history',
-};
-
+window.TEACHER_APP_CLOUD_API_URL = '__SUPABASE_API_URL__';
+// ==================== 云端数据 ====================
 const DEFAULT_COURSES = ['常规课', '集训课'];
-
-function loadData(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch { return fallback; }
-}
-
-function saveData(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
-// Load data: localStorage first, fall back to embedded data in file
-let students = loadData(STORAGE_KEYS.students, null);
-let history = loadData(STORAGE_KEYS.history, null);
-
-// If localStorage has no data, seed from embedded data block
-if ((!students || students.length === 0) || (!history || history.length === 0)) {
-  const el = document.getElementById('embedded-data');
-  if (el && el.textContent.trim()) {
-    try {
-      const data = JSON.parse(el.textContent);
-      if (data.students && data.students.length > 0) {
-        students = data.students;
-        history = data.history || [];
-        persistStudents();
-        persistHistory();
-      }
-    } catch (e) {}
-  }
-}
-// Final fallback
-if (!students) students = [];
-if (!history) history = [];
+const CLOUD_API_URL = window.TEACHER_APP_CLOUD_API_URL || '';
+let students = [];
+let history = [];
+let cloudApi = null;
+let cloudVersion = 0;
+let cloudSaveTimer = null;
+let cloudSaveChain = Promise.resolve();
 
 // Migration: convert old {course, hours} to new {courses:[], studentNo}
 function migrateStudents() {
@@ -668,9 +667,8 @@ function migrateStudents() {
       changed = true;
     }
   });
-  if (changed) persistStudents();
+  if (changed) persistCloudState('升级学员资料');
 }
-migrateStudents();
 
 // Generate student number: YYMMDD-NN based on creation date
 function generateStudentNo(createdAt) {
@@ -691,9 +689,101 @@ function getClassList() {
   return [...classes].sort();
 }
 
-// Persist helpers
-function persistStudents() { saveData(STORAGE_KEYS.students, students); }
-function persistHistory() { saveData(STORAGE_KEYS.history, history); }
+function persistStudents(reason = '更新学员资料') { persistCloudState(reason); }
+function persistHistory(reason = '更新签到记录') { persistCloudState(reason); }
+
+function setCloudStatus(text, type = 'info') {
+  const element = document.getElementById('cloudStatus');
+  if (!element) return;
+  element.textContent = text;
+  element.dataset.type = type;
+}
+
+function persistCloudState(reason) {
+  if (!cloudApi) return;
+  window.clearTimeout(cloudSaveTimer);
+  cloudSaveTimer = window.setTimeout(() => {
+    cloudSaveChain = cloudSaveChain.catch(() => {}).then(async () => {
+      setCloudStatus('正在同步…');
+      const result = await cloudApi.saveState({ students, history }, reason, cloudVersion);
+      cloudVersion = result.version;
+      setCloudStatus('已同步到云端', 'success');
+    }).catch(async (error) => {
+      if (error.status === 409) {
+        await loadCloudState();
+      }
+      setCloudStatus('同步失败', 'error');
+      showToast(error.message || '云端同步失败，请稍后重试', 'error');
+    });
+  }, 0);
+}
+
+async function loadCloudState() {
+  const result = await cloudApi.getState();
+  students = Array.isArray(result.state?.students) ? result.state.students : [];
+  history = Array.isArray(result.state?.history) ? result.state.history : [];
+  cloudVersion = result.version;
+  migrateStudents();
+  populateFilters();
+  renderStudents();
+  renderHistory();
+  updateStats();
+  setCloudStatus('已从云端加载', 'success');
+}
+
+/* TESTABLE_LOGIC_START */
+function getStudentTotalHours(student) { return (student.courses || []).reduce((total, course) => total + (Number(course.hours) || 0), 0); }
+function isLowHoursStudent(student) { return (student.courses || []).some(course => (Number(course.hours) || 0) <= 2); }
+function normalizeClassName(value) { return String(value || '').trim(); }
+function isValidCnMobile(value) { return /^1[3-9]\d{9}$/.test(value); }
+function paginate(items, requestedPage, pageSize) {
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const page = Math.min(Math.max(1, requestedPage), totalPages);
+  return { items: items.slice((page - 1) * pageSize, page * pageSize), page, totalPages };
+}
+function removeHistoryRecord(state, recordId, restoreHours) {
+  const record = (state.history || []).find(item => item.id === recordId);
+  const nextHistory = (state.history || []).filter(item => item.id !== recordId);
+  const nextStudents = (state.students || []).map(student => ({ ...student, courses: (student.courses || []).map(course => ({ ...course })) }));
+  let restored = false;
+  if (record && restoreHours) {
+    const student = nextStudents.find(item => item.id === record.studentId);
+    const course = student && (student.courses || []).find(item => item.type === record.course);
+    if (course) { course.hours = (Number(course.hours) || 0) + 1; restored = true; }
+  }
+  return { state: { students: nextStudents, history: nextHistory }, restored };
+}
+function applyBatchSignin(state, studentIds, courseType, time, makeId = () => `batch-${Date.now()}`) {
+  const selectedIds = new Set(studentIds);
+  const nextStudents = (state.students || []).map(student => ({ ...student, courses: (student.courses || []).map(course => ({ ...course })) }));
+  const nextHistory = [...(state.history || [])];
+  let signedCount = 0;
+  nextStudents.forEach(student => {
+    if (!selectedIds.has(student.id)) return;
+    const course = (student.courses || []).find(item => item.type === courseType);
+    if (!course || course.hours <= 0) return;
+    course.hours -= 1;
+    signedCount++;
+    nextHistory.push({ id: makeId(), studentId: student.id, studentName: student.name, className: student.className, course: courseType, time, remainHours: course.hours, note: '' });
+  });
+  return { students: nextStudents, history: nextHistory, signedCount };
+}
+function filterStudents(items, options) {
+  const { search = '', className = '', course = '', lowOnly = false, sort = 'created-desc' } = options;
+  const needle = String(search).toLowerCase().trim();
+  const result = (items || []).filter(student => {
+    const courses = student.courses || [];
+    const matchesSearch = !needle || [student.name, student.phone, student.studentNo, student.className, ...courses.map(item => item.type)].some(value => String(value || '').toLowerCase().includes(needle));
+    return matchesSearch && (!className || student.className === className) && (!course || courses.some(item => item.type === course)) && (!lowOnly || isLowHoursStudent(student));
+  });
+  return result.sort((left, right) => {
+    if (sort === 'name-asc') return String(left.name || '').localeCompare(String(right.name || ''), 'zh-CN');
+    if (sort === 'hours-asc') return getStudentTotalHours(left) - getStudentTotalHours(right);
+    if (sort === 'class-asc') return String(left.className || '').localeCompare(String(right.className || ''), 'zh-CN');
+    return String(right.createdAt || '').localeCompare(String(left.createdAt || ''));
+  });
+}
+/* TESTABLE_LOGIC_END */
 
 // ==================== Toast ====================
 function showToast(msg, type = 'info') {
@@ -1502,49 +1592,17 @@ function escHtml(str) {
   return div.innerHTML;
 }
 
-// ==================== Reset ====================
-function resetApp() {
-  const pw = prompt('⚠️ 此操作将清除所有修改，恢复为初始数据！\n\n请输入重置密码确认操作：');
-  if (pw === null) return;
-  if (pw !== RESET_PASSWORD) { showToast('重置密码错误 ❌', 'error'); return; }
-  localStorage.removeItem(STORAGE_KEYS.students);
-  localStorage.removeItem(STORAGE_KEYS.history);
-  sessionStorage.removeItem('teacher_app_unlocked');
-  location.reload();
-}
-
 // ==================== Export / Import ====================
 function exportData() {
   const data = { students, history, exportedAt: new Date().toISOString() };
-  const json = JSON.stringify(data);
-
-  // Ensure password overlay is active in exported file
-  const pwOverlay = document.getElementById('passwordOverlay');
-  const wasActive = pwOverlay && pwOverlay.classList.contains('active');
-  if (pwOverlay && !wasActive) pwOverlay.classList.add('active');
-
-  let html = document.documentElement.outerHTML;
-
-  // Restore original state
-  if (pwOverlay && !wasActive) pwOverlay.classList.remove('active');
-
-  // Replace the embedded-data script content with new data
-  html = html.replace(
-    /(<script type="application\/json" id="embedded-data">)[\s\S]*?(<\/script>)/,
-    '$1' + json + '$2'
-  );
-  // Swap test storage keys for production keys in the exported file
-  html = html.replace(/teacher_app_test_students/g, 'teacher_app_students');
-  html = html.replace(/teacher_app_test_history/g, 'teacher_app_history');
-
-  const blob = new Blob(['<!DOCTYPE html>\n', html], { type: 'text/html;charset=utf-8' });
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `学员管理系统_${new Date().toISOString().slice(0, 10)}.html`;
+  a.download = `学员管理备份_${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  showToast('已导出为完整文件，打开即用 ✅', 'success');
+  showToast('已导出 JSON 备份 ✅', 'success');
 }
 
 function importData(event) {
@@ -1567,8 +1625,7 @@ function importData(event) {
 
       students = data.students;
       history = data.history || [];
-      persistStudents();
-      persistHistory();
+      persistCloudState('导入备份');
       populateFilters();
       renderStudents();
       renderHistory();
@@ -1582,45 +1639,89 @@ function importData(event) {
   event.target.value = '';
 }
 
-// ==================== Password ====================
-const APP_PASSWORD = '0705';
-const RESET_PASSWORD = '1111';
-
-function checkPassword() {
+// ==================== Cloud login ====================
+async function checkPassword() {
+  const usernameInput = document.getElementById('usernameInput');
   const input = document.getElementById('passwordInput');
   const errorEl = document.getElementById('passwordError');
-  if (input.value === APP_PASSWORD) {
-    sessionStorage.setItem('teacher_app_unlocked', '1');
+  const button = document.getElementById('loginButton');
+  errorEl.style.display = 'none';
+  button.disabled = true;
+  button.textContent = '正在登录…';
+  try {
+    await cloudApi.login(usernameInput.value.trim(), input.value);
+    await loadCloudState();
     document.getElementById('passwordOverlay').classList.remove('active');
     input.value = '';
-    errorEl.style.display = 'none';
-  } else {
+    setCloudStatus('已登录，云端同步开启', 'success');
+  } catch (error) {
+    errorEl.textContent = error.message || '登录失败，请重试';
     errorEl.style.display = 'block';
     input.value = '';
     input.focus();
+  } finally {
+    button.disabled = false;
+    button.textContent = '🔓 登录并加载数据';
   }
 }
 
-// Enter key on password input
-document.addEventListener('DOMContentLoaded', function() {
-  const pwInput = document.getElementById('passwordInput');
-  if (pwInput) {
-    pwInput.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') checkPassword();
-    });
-  }
-});
-
-// ==================== Init ====================
-function init() {
-  // Check if already unlocked this session
-  if (sessionStorage.getItem('teacher_app_unlocked') === '1') {
-    document.getElementById('passwordOverlay').classList.remove('active');
-  }
-  populateFilters();
+async function logoutCloud() {
+  if (!cloudApi) return;
+  await cloudApi.logout();
+  students = [];
+  history = [];
+  cloudVersion = 0;
   renderStudents();
+  renderHistory();
   updateStats();
+  document.getElementById('passwordOverlay').classList.add('active');
+  setCloudStatus('已退出登录');
 }
+
+async function openRecoveryModal() {
+  openModal('recoveryModal');
+  const list = document.getElementById('recoveryList');
+  list.textContent = '正在读取恢复点…';
+  try {
+    const result = await cloudApi.listSnapshots();
+    const snapshots = result.snapshots || [];
+    if (!snapshots.length) { list.textContent = '暂无可恢复的数据快照'; return; }
+    list.className = '';
+    list.innerHTML = snapshots.map(snapshot => `<div style="border-bottom:1px solid var(--border);padding:12px 0;display:flex;gap:12px;align-items:center;justify-content:space-between"><div><strong>${escHtml(formatDateTime(snapshot.createdAt))}</strong><div style="font-size:.82rem;color:var(--text-muted)">${escHtml(snapshot.reason)}</div></div><button class="btn btn-warning btn-sm" onclick="restoreCloudSnapshot('${snapshot.id}')">恢复此版本</button></div>`).join('');
+  } catch (error) {
+    list.textContent = error.message || '无法读取恢复点';
+  }
+}
+
+async function restoreCloudSnapshot(id) {
+  if (!confirm('确认恢复这个数据版本吗？当前数据会先自动保存一个恢复点。')) return;
+  try {
+    const result = await cloudApi.restoreSnapshot(id);
+    cloudVersion = result.version;
+    await loadCloudState();
+    closeModal('recoveryModal');
+    showToast('已恢复云端数据版本 ✅', 'success');
+  } catch (error) {
+    showToast(error.message || '恢复失败，请稍后重试', 'error');
+  }
+}
+
+window.startCloudPage = async function(createCloudApi) {
+  try {
+    if (!CLOUD_API_URL || CLOUD_API_URL.includes('__SUPABASE_API_URL__')) throw new Error('云端服务正在配置，请稍后再试');
+    cloudApi = createCloudApi({ baseUrl: CLOUD_API_URL });
+    document.getElementById('passwordInput').addEventListener('keydown', event => { if (event.key === 'Enter') checkPassword(); });
+    if (cloudApi.getSession()) {
+      await loadCloudState();
+      document.getElementById('passwordOverlay').classList.remove('active');
+      setCloudStatus('已登录，云端同步开启', 'success');
+    }
+  } catch (error) {
+    const errorEl = document.getElementById('passwordError');
+    errorEl.textContent = error.message || '云端服务暂时不可用';
+    errorEl.style.display = 'block';
+  }
+};
 
 // Close modal on overlay click
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -1632,11 +1733,13 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
 // Keyboard shortcut: Escape to close all modals
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
-    document.querySelectorAll('.modal-overlay.active').forEach(o => o.classList.remove('active'));
+    document.querySelectorAll('.modal-overlay.active:not(#passwordOverlay)').forEach(o => o.classList.remove('active'));
   }
 });
-
-init();
+</script>
+<script type="module">
+  import { createCloudApi } from './js/cloud-api.js';
+  window.startCloudPage(createCloudApi);
 </script>
 
 </body>
